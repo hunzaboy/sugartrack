@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "SugarTrack",
-    "slug": "SugarTrack",
+    "slug": "sugartrack",
+    "scheme": "sugartrack",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,16 +11,53 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.sugartrack.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-sharing",
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "SugarTrack uses your photos to attach food pictures to your readings.",
+          "cameraPermission": "SugarTrack uses the camera to take photos of your food."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SugarTrack uses the camera to take photos of your food."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-foreground.png",
+          "color": "#2E8B7A"
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "880bf6e7-26ff-436a-a107-cbf9bbf96108"
+      }
+    },
+    "owner": "hunzaboy"
   }
 }
