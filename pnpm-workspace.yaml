@@ -1,5 +1,0 @@
-# browserslist metadata packages publish almost daily and fail EAS
-# `pnpm install --frozen-lockfile` against pnpm 11's default 24h minimumReleaseAge.
-minimumReleaseAgeExclude:
-  - baseline-browser-mapping
-  - electron-to-chromium

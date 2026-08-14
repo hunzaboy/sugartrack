@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { Field } from '../components/Field';
 import { ChoicePicker } from '../components/ChoicePicker';
 import { Button } from '../components/Button';
+import { ScreenTitle } from '../components/Typography';
 import { createProfile } from '../lib/db';
 import { colors, fontSize, spacing } from '../lib/theme';
 import type { GlucoseUnit } from '../lib/types';
@@ -51,7 +52,7 @@ export default function Onboarding() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Welcome to SugarTrack</Text>
+      <ScreenTitle style={{ marginBottom: spacing.xs }}>Welcome to SugarTrack</ScreenTitle>
       <Text style={styles.subtitle}>Let&apos;s set up your profile.</Text>
 
       <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Mary Smith" />
@@ -93,12 +94,6 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     paddingTop: spacing.xl,
-  },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: fontSize.md,

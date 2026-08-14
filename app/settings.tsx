@@ -5,6 +5,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { Field } from '../components/Field';
 import { ChoicePicker } from '../components/ChoicePicker';
 import { Button } from '../components/Button';
+import { SectionTitle } from '../components/Typography';
 import { getProfile, updateProfile } from '../lib/db';
 import { exportBackup, importBackup } from '../lib/backup';
 import { requestNotificationPermission, scheduleDailyReminder, cancelDailyReminder } from '../lib/notifications';
@@ -166,7 +167,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionTitle}>Profile</Text>
+      <SectionTitle>Profile</SectionTitle>
       <Field label="Name" value={name} onChangeText={setName} />
       <ChoicePicker
         label="Blood Sugar Unit"
@@ -190,13 +191,13 @@ export default function SettingsScreen() {
       <Field label="Doctor Contact (optional)" value={doctorContact} onChangeText={setDoctorContact} />
       <Button title={savingProfile ? 'Saving...' : 'Save Profile'} onPress={handleSaveProfile} disabled={savingProfile} />
 
-      <Text style={[styles.sectionTitle, { marginTop: spacing.xl }]}>Accessibility</Text>
+      <SectionTitle style={{ marginTop: spacing.xl }}>Accessibility</SectionTitle>
       <View style={styles.switchRow}>
         <Text style={styles.switchLabel}>Large Text & High Contrast</Text>
         <Switch value={largeText} onValueChange={handleToggleLargeText} />
       </View>
 
-      <Text style={[styles.sectionTitle, { marginTop: spacing.xl }]}>Reminders</Text>
+      <SectionTitle style={{ marginTop: spacing.xl }}>Reminders</SectionTitle>
       <View style={styles.switchRow}>
         <Text style={styles.switchLabel}>Daily Testing Reminder</Text>
         <Switch value={reminderEnabled} onValueChange={handleToggleReminder} />
@@ -214,7 +215,7 @@ export default function SettingsScreen() {
         exclude SugarTrack from battery restrictions.
       </Text>
 
-      <Text style={[styles.sectionTitle, { marginTop: spacing.xl }]}>Backup & Restore</Text>
+      <SectionTitle style={{ marginTop: spacing.xl }}>Backup & Restore</SectionTitle>
       {showBackupReminder ? (
         <View style={styles.reminderBanner}>
           <Text style={styles.reminderText}>
@@ -247,12 +248,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingTop: spacing.xl },
-  sectionTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
   rangeRow: { flexDirection: 'row' },
   reminderBanner: {
     backgroundColor: colors.lowBg,

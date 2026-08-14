@@ -2,9 +2,10 @@ import { useCallback, useState } from 'react';
 import { View, Text, Image, FlatList, Pressable, StyleSheet, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Button } from '../../components/Button';
+import { ScreenTitle } from '../../components/Typography';
 import { listReadings, deleteReading } from '../../lib/readings';
 import { deletePhoto } from '../../lib/photos';
-import { colors, fontSize, spacing, radius } from '../../lib/theme';
+import { colors, fontSize, spacing, radius, cardShadow } from '../../lib/theme';
 import type { Reading } from '../../lib/types';
 import { READING_CONTEXTS } from '../../lib/types';
 
@@ -39,7 +40,7 @@ export default function History() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.title}>History</Text>
+        <ScreenTitle style={{ marginBottom: 0 }}>History</ScreenTitle>
         <Button title="+ Add" onPress={() => router.push('/add-reading')} style={styles.addButton} />
       </View>
 
@@ -87,11 +88,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.text,
-  },
   addButton: {
     paddingHorizontal: spacing.md,
   },
@@ -112,6 +108,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
+    ...cardShadow,
   },
   thumbnail: {
     width: 56,

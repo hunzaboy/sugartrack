@@ -1,6 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { colors, fontSize, spacing, radius, touchTarget } from '../../lib/theme';
+import { ScreenTitle } from '../../components/Typography';
+import { colors, fontSize, spacing, radius, touchTarget, cardShadow } from '../../lib/theme';
 
 const MENU_ITEMS: { href: '/medications' | '/a1c' | '/export' | '/settings'; label: string; icon: string }[] = [
   { href: '/medications', label: 'Medications', icon: '💊' },
@@ -12,7 +13,7 @@ const MENU_ITEMS: { href: '/medications' | '/a1c' | '/export' | '/settings'; lab
 export default function More() {
   return (
     <View style={styles.screen}>
-      <Text style={styles.title}>More</Text>
+      <ScreenTitle>More</ScreenTitle>
 
       {MENU_ITEMS.map((item) => (
         <Pressable key={item.href} style={styles.row} onPress={() => router.push(item.href)}>
@@ -32,12 +33,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingTop: spacing.xl,
   },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.lg,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -46,6 +41,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
+    ...cardShadow,
   },
   icon: {
     fontSize: fontSize.lg,

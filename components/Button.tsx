@@ -1,5 +1,5 @@
 import { Pressable, Text, StyleSheet, ViewStyle } from 'react-native';
-import { fontSize, spacing, touchTarget, radius } from '../lib/theme';
+import { fontSize, fontFamily, spacing, touchTarget, radius } from '../lib/theme';
 import { useAccessibility } from '../lib/accessibility';
 
 interface ButtonProps {
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   text: {
-    fontWeight: '600',
+    fontFamily: fontFamily.bold,
   },
   disabled: {
     opacity: 0.5,

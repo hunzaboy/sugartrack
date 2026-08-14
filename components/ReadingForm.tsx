@@ -4,6 +4,7 @@ import { Field } from './Field';
 import { ChoicePicker } from './ChoicePicker';
 import { Button } from './Button';
 import { PhotoPicker } from './PhotoPicker';
+import { DateTimeField } from './DateTimeField';
 import { spacing } from '../lib/theme';
 import { READING_CONTEXTS } from '../lib/types';
 import type { Reading, ReadingContext, GlucoseUnit } from '../lib/types';
@@ -29,6 +30,7 @@ export function ReadingForm({ initial, unit, onSubmit, onDelete, submitLabel }: 
   const [context, setContext] = useState<ReadingContext>(initial?.context ?? 'fasting');
   const [note, setNote] = useState(initial?.note ?? '');
   const [photoUri, setPhotoUri] = useState<string | null>(initial?.photo_uri ?? null);
+  const [timestamp, setTimestamp] = useState(() => initial?.timestamp ?? new Date().toISOString());
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {
@@ -43,7 +45,7 @@ export function ReadingForm({ initial, unit, onSubmit, onDelete, submitLabel }: 
         value: numeric,
         unit: initial?.unit ?? unit,
         context,
-        timestamp: initial?.timestamp ?? new Date().toISOString(),
+        timestamp,
         note: note.trim() || null,
         photoUri,
         photoChanged: photoUri !== (initial?.photo_uri ?? null),
@@ -62,6 +64,7 @@ export function ReadingForm({ initial, unit, onSubmit, onDelete, submitLabel }: 
         keyboardType="decimal-pad"
         placeholder="e.g. 110"
       />
+      <DateTimeField label="Date & Time" value={timestamp} onChange={setTimestamp} />
       <ChoicePicker label="Context" choices={READING_CONTEXTS} value={context} onChange={setContext} />
       <PhotoPicker uri={photoUri} onChange={setPhotoUri} />
       <Field label="Note (optional)" value={note} onChangeText={setNote} multiline placeholder="e.g. felt fine" />

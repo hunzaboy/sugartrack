@@ -3,11 +3,12 @@ import { View, Text, Dimensions, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { LineChart } from 'react-native-gifted-charts';
 import { ChoicePicker } from '../../components/ChoicePicker';
+import { ScreenTitle } from '../../components/Typography';
 import { listReadingsInRange } from '../../lib/readings';
 import { getProfile } from '../../lib/db';
 import { readingsToLineData, startOfRange, chartMaxValue, CHART_RANGES } from '../../lib/chartData';
 import type { ChartRange } from '../../lib/chartData';
-import { colors, fontSize, spacing, radius } from '../../lib/theme';
+import { colors, fontSize, spacing, radius, cardShadow } from '../../lib/theme';
 import type { Reading, Profile } from '../../lib/types';
 
 const screenWidth = Dimensions.get('window').width;
@@ -34,10 +35,11 @@ export default function Graph() {
   const targetHigh = profile?.target_high ?? 180;
   const chartData = readingsToLineData(readings, targetLow, targetHigh);
   const maxValue = chartMaxValue(readings.map((r) => r.value), targetHigh);
+  const chartWidth = screenWidth - spacing.lg * 2 - spacing.md * 2;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Trends</Text>
+      <ScreenTitle style={{ marginBottom: spacing.md }}>Trends</ScreenTitle>
 
       <ChoicePicker
         label="Range"
@@ -66,7 +68,7 @@ export default function Graph() {
           <LineChart
             data={chartData}
             height={260}
-            width={screenWidth - spacing.lg * 2 - spacing.md * 2}
+            width={chartWidth}
             thickness={3}
             color={colors.primary}
             maxValue={maxValue}
@@ -78,9 +80,9 @@ export default function Graph() {
             xAxisColor={colors.border}
             dataPointsRadius={5}
             curved
-            initialSpacing={16}
-            endSpacing={16}
-            spacing={Math.max(28, (screenWidth - 120) / Math.max(chartData.length, 1))}
+            initialSpacing={28}
+            endSpacing={28}
+            spacing={Math.max(28, (chartWidth - 56) / Math.max(chartData.length - 1, 1))}
             showReferenceLine1
             referenceLine1Position={targetHigh}
             referenceLine1Config={{ color: colors.high, dashWidth: 4, dashGap: 4, thickness: 1.5 }}
@@ -104,12 +106,6 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     paddingTop: spacing.xl,
-  },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.md,
   },
   legendRow: {
     flexDirection: 'row',
@@ -137,6 +133,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     minHeight: 260,
     justifyContent: 'center',
+    ...cardShadow,
   },
   empty: {
     fontSize: fontSize.md,

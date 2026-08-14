@@ -3,10 +3,11 @@ import { View, Text, Dimensions, StyleSheet } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { LineChart } from 'react-native-gifted-charts';
 import { Button } from '../../components/Button';
+import { ScreenTitle } from '../../components/Typography';
 import { listRecentReadings } from '../../lib/readings';
 import { getProfile } from '../../lib/db';
 import { readingsToLineData, chartMaxValue } from '../../lib/chartData';
-import { colors, fontSize, spacing, radius, statusColor } from '../../lib/theme';
+import { colors, fontSize, spacing, radius, statusColor, cardShadow } from '../../lib/theme';
 import type { Reading, Profile } from '../../lib/types';
 import { READING_CONTEXTS, getReadingStatus } from '../../lib/types';
 
@@ -40,7 +41,7 @@ export default function Dashboard() {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.title}>SugarTrack</Text>
+      <ScreenTitle>SugarTrack</ScreenTitle>
 
       <View style={[styles.card, statusStyle ? { backgroundColor: statusStyle.bg } : null]}>
         {!loaded ? null : latest ? (
@@ -82,8 +83,8 @@ export default function Dashboard() {
             hideDataPoints={false}
             dataPointsRadius={4}
             curved
-            initialSpacing={8}
-            endSpacing={8}
+            initialSpacing={24}
+            endSpacing={24}
             showReferenceLine1
             referenceLine1Position={targetHigh}
             referenceLine1Config={{ color: colors.high, dashWidth: 4, dashGap: 4, thickness: 1 }}
@@ -106,12 +107,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingTop: spacing.xl,
   },
-  title: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.lg,
-  },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
@@ -119,6 +114,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     minHeight: 120,
     justifyContent: 'center',
+    ...cardShadow,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -160,6 +156,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
+    ...cardShadow,
   },
   chartLabel: {
     fontSize: fontSize.sm,

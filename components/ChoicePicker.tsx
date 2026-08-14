@@ -1,5 +1,5 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { fontSize, spacing, radius, touchTarget } from '../lib/theme';
+import { fontSize, fontFamily, spacing, radius, touchTarget } from '../lib/theme';
 import { useAccessibility } from '../lib/accessibility';
 
 interface Choice<T extends string> {
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    fontWeight: '600',
+    fontFamily: fontFamily.bold,
     marginBottom: spacing.xs,
   },
   row: {
@@ -72,6 +72,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   chipText: {
-    fontWeight: '600',
+    fontFamily: fontFamily.bold,
   },
 });

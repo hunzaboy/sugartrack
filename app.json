@@ -8,10 +8,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.hunzaboy.sugartrack"
     },
     "android": {
-      "package": "com.sugartrack.app",
+      "package": "com.hunzaboy.sugartrack",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -50,7 +51,9 @@
           "icon": "./assets/android-icon-foreground.png",
           "color": "#2E8B7A"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ],
     "extra": {
       "router": {},

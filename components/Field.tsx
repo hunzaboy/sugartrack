@@ -1,5 +1,5 @@
 import { View, Text, TextInput, StyleSheet, KeyboardTypeOptions } from 'react-native';
-import { fontSize, spacing, radius, touchTarget } from '../lib/theme';
+import { fontSize, fontFamily, spacing, radius, touchTarget } from '../lib/theme';
 import { useAccessibility } from '../lib/accessibility';
 
 interface FieldProps {
@@ -19,7 +19,7 @@ export function Field({ label, value, onChangeText, placeholder, keyboardType, m
       <TextInput
         style={[
           styles.input,
-          { fontSize: fontSize.md * scale, color: colors.text, borderColor: colors.border },
+          { fontSize: fontSize.md * scale, color: colors.text, borderColor: colors.border, fontFamily: fontFamily.regular },
           multiline && styles.multiline,
         ]}
         value={value}
@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    fontWeight: '600',
+    fontFamily: fontFamily.bold,
     marginBottom: spacing.xs,
   },
   input: {
