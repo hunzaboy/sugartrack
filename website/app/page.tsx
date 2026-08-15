@@ -1,5 +1,12 @@
 const APP_VERSION = "1.0.0";
 
+// Where the APK is hosted. The file is too big to live in this repo's
+// deploy bundle (see README), so it's attached to a GitHub Release instead —
+// permanent, free, no size concerns. Update this to the new release's asset
+// URL each time you cut a new build.
+const APK_URL =
+  "https://github.com/hunzaboy/sugartrack/releases/download/v1.0.0/sugartrack.apk";
+
 export default function Home() {
   return (
     <main>
@@ -12,10 +19,10 @@ export default function Home() {
           your phone.
         </p>
 
-        <a className="download-btn" href="/sugartrack.apk" download>
+        <a className="download-btn" href={APK_URL} download>
           Download for Android
         </a>
-        <p className="meta">Version {APP_VERSION} · APK, direct install</p>
+        <p className="meta">Version {APP_VERSION} · Production build</p>
 
         <div className="instructions">
           <h2>How to install</h2>
