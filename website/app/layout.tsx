@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "SugarTrack — Download the App",
-  description: "Download the SugarTrack Android app.",
+  description:
+    "A free Android logbook for blood sugar. No account, no internet, no cloud — everything stays on the phone.",
   icons: { icon: "/icon.png" },
 };
 
