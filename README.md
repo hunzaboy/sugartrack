@@ -28,3 +28,9 @@ SugarTrack is a logbook, not a glucose meter and not medical advice. Readings co
 ## Android only
 
 This is an Android app. Install the APK on the phone that will hold the log — typically the person whose readings you are tracking, or whoever is helping them.
+
+## Support this work
+
+SugarTrack is the first of several planned apps for health and lifestyle tracking — all offline, all on-device, and built around problems people actually face. No accounts, no cloud, and no subscriptions.
+
+If this project is useful to you, a GitHub star is a simple way to show support. It also helps make the case for building more tools in the same spirit.

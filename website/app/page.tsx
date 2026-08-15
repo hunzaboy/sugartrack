@@ -92,6 +92,24 @@ export default function Home() {
           </ol>
         </div>
 
+        <div className="section">
+          <h2>Support this work</h2>
+          <p>
+            SugarTrack is the first of several planned apps for health and
+            lifestyle tracking — all offline, all on-device, and built around
+            problems people actually face. No accounts, no cloud, and no
+            subscriptions.
+          </p>
+          <p>
+            If this project is useful to you, starring the repository on
+            GitHub is a simple way to show support. It also helps make the
+            case for building more tools in the same spirit.
+          </p>
+          <a className="star-btn" href={GITHUB_URL}>
+            Star on GitHub
+          </a>
+        </div>
+
         <p className="disclaimer">
           SugarTrack is a logbook, not a glucose meter and not medical
           advice. Readings come from your own meter. Talk to a doctor about

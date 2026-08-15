@@ -185,6 +185,27 @@ h1 {
   margin-top: 4px;
 }
 
+.star-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  padding: 12px 18px;
+  width: 100%;
+  border: 1px solid var(--brand);
+  border-radius: 14px;
+  color: var(--brand);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.star-btn:hover {
+  background: var(--brand);
+  color: #fff;
+}
+
 .disclaimer {
   margin: 28px 0 0;
   padding-top: 20px;
