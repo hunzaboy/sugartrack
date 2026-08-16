@@ -8,6 +8,15 @@ const APK_URL =
   "https://github.com/hunzaboy/sugartrack/releases/download/v1.0.0/sugartrack.apk";
 const GITHUB_URL = "https://github.com/hunzaboy/sugartrack";
 
+const SCREENSHOTS = [
+  { file: "dashboard.png", label: "Dashboard" },
+  { file: "add-reading.png", label: "Add a reading" },
+  { file: "trends.png", label: "Trends" },
+  { file: "history.png", label: "History" },
+  { file: "export.png", label: "Export for doctor" },
+  { file: "settings.png", label: "Settings" },
+];
+
 export default function Home() {
   return (
     <main>
@@ -35,6 +44,18 @@ export default function Home() {
         <a className="github-link" href={GITHUB_URL}>
           View on GitHub
         </a>
+
+        <div className="section screenshots">
+          <h2>See it in action</h2>
+          <div className="screenshot-strip">
+            {SCREENSHOTS.map(({ file, label }) => (
+              <a key={file} href={`/screenshots/${file}`} target="_blank">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/screenshots/${file}`} alt={label} />
+              </a>
+            ))}
+          </div>
+        </div>
 
         <div className="section">
           <h2>Why it exists</h2>

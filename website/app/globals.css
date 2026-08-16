@@ -151,6 +151,43 @@ h1 {
   padding-top: 20px;
 }
 
+.screenshots {
+  text-align: center;
+}
+
+.screenshot-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 4px 8px;
+  margin: 0 -4px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.screenshot-strip::-webkit-scrollbar {
+  height: 6px;
+}
+
+.screenshot-strip::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}
+
+.screenshot-strip a {
+  flex: none;
+  scroll-snap-align: start;
+}
+
+.screenshot-strip img {
+  display: block;
+  height: 340px;
+  width: auto;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
 .section h2 {
   font-size: 14px;
   text-transform: uppercase;
