@@ -55,6 +55,36 @@ main {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
 }
 
+.card.legal {
+  max-width: 720px;
+  text-align: left;
+}
+
+.legal-kicker {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.legal-kicker a,
+.legal a {
+  color: var(--brand);
+}
+
+.footer-links {
+  margin-top: 20px;
+  font-size: 13px;
+}
+
+.footer-links a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
 .icon {
   width: 88px;
   height: 88px;

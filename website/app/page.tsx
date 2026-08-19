@@ -136,6 +136,9 @@ export default function Home() {
           advice. Readings come from your own meter. Talk to a doctor about
           what the numbers mean.
         </p>
+        <p className="footer-links">
+          <a href="/privacy">Privacy Policy</a>
+        </p>
       </div>
     </main>
   );
