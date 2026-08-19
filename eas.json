@@ -18,10 +18,15 @@
       }
     },
     "production": {
-      "android": {
-        "buildType": "apk"
-      },
       "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {
+      "android": {
+        "track": "alpha",
+        "releaseStatus": "completed"
+      }
     }
   }
 }

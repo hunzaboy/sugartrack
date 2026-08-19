@@ -13,10 +13,20 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
+*.aab
+*.apk
 *.p8
 *.p12
 *.key
 *.mobileprovision
+
+# Play / EAS secrets (never commit)
+credentials.json
+google-services.json
+*service-account*.json
+pc-api-*.json
+play-store/testers.csv
 
 # Metro
 .metro-health-check*
@@ -33,8 +43,10 @@ yarn-error.*
 # Claude Code local state
 .claude/
 
-# local env files
-.env*.local
+# env files
+.env
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo

@@ -44,7 +44,9 @@
     "web": "expo start --web",
     "build:dev": "eas build --profile development --platform android",
     "build:preview": "eas build --profile preview --platform android",
-    "build:production": "eas build --profile production --platform android"
+    "build:production": "eas build --profile production --platform android",
+    "submit:android": "eas submit --platform android --profile production",
+    "build:submit:android": "eas build --platform android --profile production --auto-submit"
   },
   "private": true,
   "overrides": {
