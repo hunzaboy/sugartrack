@@ -9,12 +9,12 @@ const APK_URL =
 const GITHUB_URL = "https://github.com/hunzaboy/sugartrack";
 
 const SCREENSHOTS = [
-  { file: "dashboard.png", label: "Dashboard" },
-  { file: "add-reading.png", label: "Add a reading" },
-  { file: "trends.png", label: "Trends" },
-  { file: "history.png", label: "History" },
-  { file: "export.png", label: "Export for doctor" },
-  { file: "settings.png", label: "Settings" },
+  { file: "01-log-readings.png", label: "Log readings in seconds" },
+  { file: "02-daily-trends.png", label: "See daily trends clearly" },
+  { file: "03-every-reading.png", label: "Explore every reading" },
+  { file: "04-history.png", label: "Keep history organized" },
+  { file: "05-save-reports.png", label: "Save reports to your phone" },
+  { file: "06-private-offline.png", label: "Private, offline, yours" },
 ];
 
 export default function Home() {

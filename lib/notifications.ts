@@ -1,19 +1,27 @@
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 const REMINDER_CHANNEL_ID = 'sugartrack-reminders';
 const REMINDER_IDENTIFIER = 'sugartrack-daily-reminder';
+let isHandlerConfigured = false;
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+async function getNotifications() {
+  const Notifications = await import('expo-notifications');
+  if (!isHandlerConfigured) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    });
+    isHandlerConfigured = true;
+  }
+  return Notifications;
+}
 
 export async function ensureNotificationChannel(): Promise<void> {
+  const Notifications = await getNotifications();
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL_ID, {
       name: 'Blood Sugar Reminders',
@@ -23,6 +31,7 @@ export async function ensureNotificationChannel(): Promise<void> {
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  const Notifications = await getNotifications();
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
   const result = await Notifications.requestPermissionsAsync();
@@ -30,6 +39,7 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 export async function scheduleDailyReminder(time: string): Promise<void> {
+  const Notifications = await getNotifications();
   await ensureNotificationChannel();
   await Notifications.cancelAllScheduledNotificationsAsync();
 
@@ -52,5 +62,6 @@ export async function scheduleDailyReminder(time: string): Promise<void> {
 }
 
 export async function cancelDailyReminder(): Promise<void> {
+  const Notifications = await getNotifications();
   await Notifications.cancelAllScheduledNotificationsAsync();
 }

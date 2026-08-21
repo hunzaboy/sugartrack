@@ -30,7 +30,7 @@ export function ChoicePicker<T extends string>({ label, choices, value, onChange
               accessibilityState={{ selected }}
               style={[
                 styles.chip,
-                { borderColor: colors.border, backgroundColor: colors.background },
+                { borderColor: colors.border, backgroundColor: colors.surface },
                 selected && { backgroundColor: colors.primary, borderColor: colors.primary },
               ]}
             >
@@ -68,8 +68,8 @@ const styles = StyleSheet.create({
     minHeight: touchTarget.minHeight,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
-    borderRadius: radius.lg,
-    borderWidth: 2,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
   },
   chipText: {
     fontFamily: fontFamily.bold,

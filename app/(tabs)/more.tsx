@@ -1,37 +1,44 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Screen } from '../../components/Screen';
 import { ScreenTitle } from '../../components/Typography';
 import { colors, fontSize, spacing, radius, touchTarget, cardShadow } from '../../lib/theme';
 
-const MENU_ITEMS: { href: '/medications' | '/a1c' | '/export' | '/settings'; label: string; icon: string }[] = [
-  { href: '/medications', label: 'Medications', icon: '💊' },
-  { href: '/a1c', label: 'A1C Log', icon: '🩸' },
-  { href: '/export', label: 'Export for Doctor', icon: '📄' },
-  { href: '/settings', label: 'Profile, Backup & Settings', icon: '⚙️' },
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
+const MENU_ITEMS: {
+  href: '/medications' | '/a1c' | '/export' | '/settings';
+  label: string;
+  icon: IoniconName;
+}[] = [
+  { href: '/medications', label: 'Medications', icon: 'medical-outline' },
+  { href: '/a1c', label: 'A1C log', icon: 'water-outline' },
+  { href: '/export', label: 'Export for doctor', icon: 'document-text-outline' },
+  { href: '/settings', label: 'Profile, backup & settings', icon: 'settings-outline' },
 ];
 
 export default function More() {
   return (
-    <View style={styles.screen}>
+    <Screen scroll style={styles.content}>
       <ScreenTitle>More</ScreenTitle>
 
       {MENU_ITEMS.map((item) => (
         <Pressable key={item.href} style={styles.row} onPress={() => router.push(item.href)}>
-          <Text style={styles.icon}>{item.icon}</Text>
+          <View style={styles.icon}>
+            <Ionicons name={item.icon} size={24} color={colors.primary} />
+          </View>
           <Text style={styles.rowLabel}>{item.label}</Text>
           <Text style={styles.chevron}>›</Text>
         </Pressable>
       ))}
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-    paddingTop: spacing.xl,
+  content: {
+    paddingHorizontal: spacing.lg,
   },
   row: {
     flexDirection: 'row',
@@ -44,7 +51,12 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   icon: {
-    fontSize: fontSize.lg,
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primarySoft,
     marginRight: spacing.md,
   },
   rowLabel: {

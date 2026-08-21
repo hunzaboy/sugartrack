@@ -4,8 +4,14 @@ import { ChoicePicker } from '../components/ChoicePicker';
 import { Button } from '../components/Button';
 import { listReadingsInRange, listReadings } from '../lib/readings';
 import { getProfile } from '../lib/db';
-import { exportReadingsCsv, exportReadingsPdf } from '../lib/export';
-import { colors, fontSize, spacing } from '../lib/theme';
+import {
+  prepareReadingsCsv,
+  prepareReadingsPdf,
+  savePreparedExport,
+  sharePreparedExport,
+} from '../lib/export';
+import type { PreparedExport } from '../lib/export';
+import { cardShadow, colors, fontFamily, fontSize, radius, spacing } from '../lib/theme';
 
 type RangeOption = '7' | '30' | '90' | 'all';
 
@@ -28,6 +34,21 @@ export default function ExportScreen() {
     return listReadingsInRange(start.toISOString(), new Date().toISOString());
   };
 
+  const offerShare = (preparedExport: PreparedExport) => {
+    Alert.alert('Saved to your device', `${preparedExport.filename} was saved to the folder you selected.`, [
+      { text: 'Done', style: 'cancel' },
+      {
+        text: 'Share now',
+        onPress: async () => {
+          const isAvailable = await sharePreparedExport(preparedExport);
+          if (!isAvailable) {
+            Alert.alert('Sharing unavailable', 'This device cannot open the sharing menu.');
+          }
+        },
+      },
+    ]);
+  };
+
   const handleExportPdf = async () => {
     setBusy(true);
     try {
@@ -37,9 +58,11 @@ export default function ExportScreen() {
         return;
       }
       const profile = await getProfile();
-      await exportReadingsPdf(readings, profile);
-    } catch {
-      Alert.alert('Export Failed', 'Could not generate the PDF. Please try again.');
+      const preparedExport = await prepareReadingsPdf(readings, profile);
+      const savedUri = await savePreparedExport(preparedExport);
+      if (savedUri) offerShare(preparedExport);
+    } catch (error) {
+      Alert.alert('Export failed', error instanceof Error ? error.message : 'Could not save the PDF. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -53,9 +76,11 @@ export default function ExportScreen() {
         Alert.alert('No Data', 'There are no readings in this date range to export.');
         return;
       }
-      await exportReadingsCsv(readings);
-    } catch {
-      Alert.alert('Export Failed', 'Could not generate the CSV. Please try again.');
+      const preparedExport = prepareReadingsCsv(readings);
+      const savedUri = await savePreparedExport(preparedExport);
+      if (savedUri) offerShare(preparedExport);
+    } catch (error) {
+      Alert.alert('Export failed', error instanceof Error ? error.message : 'Could not save the CSV. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -63,15 +88,20 @@ export default function ExportScreen() {
 
   return (
     <View style={styles.screen}>
-      <Text style={styles.subtitle}>
-        Generate a report of your blood sugar readings to bring to your next doctor visit.
-      </Text>
+      <View style={styles.introCard}>
+        <Text style={styles.title}>A report you control</Text>
+        <Text style={styles.subtitle}>
+          Choose a folder on your phone. Nothing is uploaded by SugarTrack.
+        </Text>
+      </View>
 
-      <ChoicePicker label="Date Range" choices={RANGE_CHOICES} value={range} onChange={setRange} />
+      <View style={styles.optionsCard}>
+        <ChoicePicker label="Date range" choices={RANGE_CHOICES} value={range} onChange={setRange} />
 
-      <Button title="Export as PDF" onPress={handleExportPdf} disabled={busy} />
-      <View style={{ height: spacing.md }} />
-      <Button title="Export as CSV" variant="secondary" onPress={handleExportCsv} disabled={busy} />
+        <Button title={busy ? 'Preparing…' : 'Save PDF'} onPress={handleExportPdf} disabled={busy} />
+        <View style={{ height: spacing.md }} />
+        <Button title="Save CSV" variant="secondary" onPress={handleExportCsv} disabled={busy} />
+      </View>
     </View>
   );
 }
@@ -82,9 +112,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: spacing.lg,
   },
+  introCard: {
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  title: {
+    color: colors.primaryDark,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.lg,
+    marginBottom: spacing.xs,
+  },
   subtitle: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
-    marginBottom: spacing.lg,
+  },
+  optionsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    ...cardShadow,
   },
 });

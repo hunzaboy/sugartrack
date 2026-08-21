@@ -1,19 +1,23 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Image, FlatList, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Button } from '../../components/Button';
+import { ReadingCard } from '../../components/ReadingVisuals';
+import { Screen } from '../../components/Screen';
 import { ScreenTitle } from '../../components/Typography';
 import { listReadings, deleteReading } from '../../lib/readings';
 import { deletePhoto } from '../../lib/photos';
-import { colors, fontSize, spacing, radius, cardShadow } from '../../lib/theme';
-import type { Reading } from '../../lib/types';
-import { READING_CONTEXTS } from '../../lib/types';
+import { getProfile } from '../../lib/db';
+import { colors, fontSize, spacing } from '../../lib/theme';
+import type { Reading, Profile } from '../../lib/types';
 
 export default function History() {
   const [readings, setReadings] = useState<Reading[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   const load = useCallback(() => {
     listReadings().then(setReadings);
+    getProfile().then(setProfile);
   }, []);
 
   useFocusEffect(
@@ -38,7 +42,7 @@ export default function History() {
   };
 
   return (
-    <View style={styles.screen}>
+    <Screen>
       <View style={styles.header}>
         <ScreenTitle style={{ marginBottom: 0 }}>History</ScreenTitle>
         <Button title="+ Add" onPress={() => router.push('/add-reading')} style={styles.addButton} />
@@ -49,38 +53,25 @@ export default function History() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={<Text style={styles.empty}>No readings logged yet.</Text>}
-        renderItem={({ item }) => {
-          const contextLabel = READING_CONTEXTS.find((c) => c.value === item.context)?.label ?? item.context;
-          return (
-            <Pressable
-              style={styles.row}
-              onPress={() => router.push(`/reading/${item.id}`)}
-              onLongPress={() => handleDelete(item)}
-            >
-              {item.photo_uri ? <Image source={{ uri: item.photo_uri }} style={styles.thumbnail} /> : null}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowValue}>
-                  {item.value} <Text style={styles.rowUnit}>{item.unit}</Text>
-                </Text>
-                <Text style={styles.rowMeta}>
-                  {contextLabel} · {new Date(item.timestamp).toLocaleString()}
-                </Text>
-                {item.note ? <Text style={styles.rowNote}>{item.note}</Text> : null}
-              </View>
-            </Pressable>
-          );
-        }}
+        renderItem={({ item }) => (
+          <Pressable
+            style={styles.row}
+            onPress={() => router.push(`/reading/${item.id}`)}
+            onLongPress={() => handleDelete(item)}
+          >
+            <ReadingCard
+              reading={item}
+              targetLow={profile?.target_low ?? 70}
+              targetHigh={profile?.target_high ?? 180}
+            />
+          </Pressable>
+        )}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingTop: spacing.xl,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -102,40 +93,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
     marginBottom: spacing.sm,
-    ...cardShadow,
-  },
-  thumbnail: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.md,
-    marginRight: spacing.md,
-    backgroundColor: colors.border,
-  },
-  rowValue: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  rowUnit: {
-    fontSize: fontSize.sm,
-    fontWeight: '400',
-    color: colors.textMuted,
-  },
-  rowMeta: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  rowNote: {
-    fontSize: fontSize.sm,
-    color: colors.text,
-    marginTop: spacing.xs,
-    fontStyle: 'italic',
   },
 });

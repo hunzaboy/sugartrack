@@ -1,22 +1,21 @@
 import { useCallback, useState } from 'react';
-import { View, Text, Dimensions, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { LineChart } from 'react-native-gifted-charts';
 import { Button } from '../../components/Button';
-import { ScreenTitle } from '../../components/Typography';
+import { ReadingCard } from '../../components/ReadingVisuals';
+import { Screen } from '../../components/Screen';
 import { listRecentReadings } from '../../lib/readings';
 import { getProfile } from '../../lib/db';
-import { readingsToLineData, chartMaxValue } from '../../lib/chartData';
-import { colors, fontSize, spacing, radius, statusColor, cardShadow } from '../../lib/theme';
+import { readingsToLineData, chartMaxValue, convertReadingsToUnit } from '../../lib/chartData';
+import { colors, fontFamily, fontSize, spacing, radius, cardShadow } from '../../lib/theme';
 import type { Reading, Profile } from '../../lib/types';
-import { READING_CONTEXTS, getReadingStatus } from '../../lib/types';
-
-const screenWidth = Dimensions.get('window').width;
 
 export default function Dashboard() {
   const [recent, setRecent] = useState<Reading[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [chartWidth, setChartWidth] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -31,136 +30,163 @@ export default function Dashboard() {
   const latest = recent[0] ?? null;
   const targetLow = profile?.target_low ?? 70;
   const targetHigh = profile?.target_high ?? 180;
-  const contextLabel = latest
-    ? READING_CONTEXTS.find((c) => c.value === latest.context)?.label ?? latest.context
-    : '';
-  const status = latest ? getReadingStatus(latest.value, targetLow, targetHigh) : null;
-  const statusStyle = status ? statusColor(status) : null;
-  const chartData = readingsToLineData(recent, targetLow, targetHigh);
-  const maxValue = chartMaxValue(recent.map((r) => r.value), targetHigh);
+  const chartReadings = convertReadingsToUnit(recent, profile?.unit ?? 'mg/dL');
+  const chartData = readingsToLineData(chartReadings, targetLow, targetHigh);
+  const dashboardChartData = chartData.map((point, index) => ({
+    ...point,
+    label: index > 0 && index < chartData.length - 1 ? point.label : '',
+  }));
+  const maxValue = chartMaxValue(
+    chartReadings.map((reading) => reading.value),
+    targetHigh,
+    profile?.unit ?? 'mg/dL'
+  );
 
   return (
-    <View style={styles.screen}>
-      <ScreenTitle>SugarTrack</ScreenTitle>
-
-      <View style={[styles.card, statusStyle ? { backgroundColor: statusStyle.bg } : null]}>
-        {!loaded ? null : latest ? (
-          <>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardLabel}>Latest Reading</Text>
-              {statusStyle ? (
-                <View style={[styles.badge, { backgroundColor: statusStyle.fg }]}>
-                  <Text style={styles.badgeText}>{statusStyle.label}</Text>
-                </View>
-              ) : null}
-            </View>
-            <Text style={[styles.value, statusStyle ? { color: statusStyle.fg } : null]}>
-              {latest.value} <Text style={styles.unit}>{latest.unit}</Text>
-            </Text>
-            <Text style={styles.meta}>
-              {contextLabel} · {new Date(latest.timestamp).toLocaleString()}
-            </Text>
-          </>
-        ) : (
-          <Text style={styles.cardLabel}>No readings yet. Add your first one below.</Text>
-        )}
+    <Screen scroll style={styles.content}>
+      <View style={styles.brandRow}>
+        <Image source={require('../../assets/icon.png')} style={styles.logo} />
+        <View>
+          <Text style={styles.brandName}>SugarTrack</Text>
+          <Text style={styles.brandTagline}>Your private health logbook</Text>
+        </View>
       </View>
 
+      <Text style={styles.sectionLabel}>Latest reading</Text>
+      {!loaded ? null : latest ? (
+        <ReadingCard
+          reading={latest}
+          targetLow={targetLow}
+          targetHigh={targetHigh}
+          showRange
+          hero
+        />
+      ) : (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>Ready for your first reading</Text>
+          <Text style={styles.emptyText}>Add a value from your glucose meter to begin your log.</Text>
+        </View>
+      )}
+
       {chartData.length > 1 ? (
-        <View style={styles.chartCard}>
-          <Text style={styles.chartLabel}>Recent Trend</Text>
-          <LineChart
-            data={chartData}
-            height={120}
-            width={screenWidth - spacing.lg * 2 - spacing.md * 2}
-            thickness={3}
-            color={colors.primary}
-            maxValue={maxValue}
-            hideRules
-            hideYAxisText
-            yAxisThickness={0}
-            xAxisThickness={0}
-            hideDataPoints={false}
-            dataPointsRadius={4}
-            curved
-            initialSpacing={24}
-            endSpacing={24}
-            showReferenceLine1
-            referenceLine1Position={targetHigh}
-            referenceLine1Config={{ color: colors.high, dashWidth: 4, dashGap: 4, thickness: 1 }}
-            showReferenceLine2
-            referenceLine2Position={targetLow}
-            referenceLine2Config={{ color: colors.low, dashWidth: 4, dashGap: 4, thickness: 1 }}
-          />
+        <View
+          style={styles.chartCard}
+          onLayout={(event) => setChartWidth(event.nativeEvent.layout.width - spacing.md * 2)}
+        >
+          <View style={styles.chartHeader}>
+            <Text style={styles.chartLabel}>Recent trend</Text>
+            <Text style={styles.chartCaption}>Last {chartData.length} readings</Text>
+          </View>
+          {chartWidth > 0 ? (
+            <LineChart
+              data={dashboardChartData}
+              height={112}
+              width={chartWidth}
+              thickness={3}
+              color={colors.primary}
+              maxValue={maxValue}
+              hideRules
+              hideYAxisText
+              yAxisLabelWidth={0}
+              yAxisThickness={0}
+              xAxisThickness={0}
+              dataPointsRadius={4}
+              curved
+              adjustToWidth
+              initialSpacing={12}
+              endSpacing={8}
+              showReferenceLine1
+              referenceLine1Position={targetHigh}
+              referenceLine1Config={{ color: colors.high, dashWidth: 4, dashGap: 4, thickness: 1 }}
+              showReferenceLine2
+              referenceLine2Position={targetLow}
+              referenceLine2Config={{ color: colors.low, dashWidth: 4, dashGap: 4, thickness: 1 }}
+            />
+          ) : null}
         </View>
       ) : null}
 
-      <Button title="+ Add Reading" onPress={() => router.push('/add-reading')} />
-    </View>
+      <Button
+        title="+ Add reading"
+        onPress={() => router.push('/add-reading')}
+        style={styles.addButton}
+      />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-    paddingTop: spacing.xl,
+  content: {
+    paddingHorizontal: spacing.lg,
   },
-  card: {
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  logo: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+  },
+  brandName: {
+    color: colors.text,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.lg,
+  },
+  brandTagline: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm - 3,
+  },
+  sectionLabel: {
+    color: colors.textMuted,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.sm - 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: spacing.sm,
+  },
+  emptyCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
-    marginBottom: spacing.lg,
-    minHeight: 120,
-    justifyContent: 'center',
     ...cardShadow,
   },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  badge: {
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  badgeText: {
-    color: colors.primaryText,
-    fontSize: fontSize.sm - 4,
-    fontWeight: '700',
-  },
-  cardLabel: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    marginBottom: spacing.xs,
-  },
-  value: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
+  emptyTitle: {
     color: colors.text,
-  },
-  unit: {
+    fontFamily: fontFamily.bold,
     fontSize: fontSize.md,
-    fontWeight: '400',
-    color: colors.textMuted,
   },
-  meta: {
-    fontSize: fontSize.sm,
+  emptyText: {
     color: colors.textMuted,
     marginTop: spacing.xs,
+    fontSize: fontSize.sm,
   },
   chartCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.md,
-    marginBottom: spacing.lg,
+    marginTop: spacing.lg,
+    overflow: 'hidden',
     ...cardShadow,
   },
-  chartLabel: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
+  addButton: {
+    marginTop: spacing.lg,
+  },
+  chartHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.sm,
+  },
+  chartLabel: {
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.sm,
+    color: colors.text,
+  },
+  chartCaption: {
+    fontSize: fontSize.sm - 4,
+    color: colors.textMuted,
   },
 });

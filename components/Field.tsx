@@ -19,7 +19,13 @@ export function Field({ label, value, onChangeText, placeholder, keyboardType, m
       <TextInput
         style={[
           styles.input,
-          { fontSize: fontSize.md * scale, color: colors.text, borderColor: colors.border, fontFamily: fontFamily.regular },
+          {
+            fontSize: fontSize.md * scale,
+            color: colors.text,
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+            fontFamily: fontFamily.regular,
+          },
           multiline && styles.multiline,
         ]}
         value={value}
@@ -43,7 +49,7 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: touchTarget.minHeight,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
   },

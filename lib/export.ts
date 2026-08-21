@@ -1,8 +1,14 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import { File, Paths } from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system';
 import { READING_CONTEXTS } from './types';
 import type { Reading, Profile } from './types';
+
+export interface PreparedExport {
+  file: File;
+  filename: string;
+  mimeType: 'text/csv' | 'application/pdf';
+}
 
 function contextLabel(context: string): string {
   return READING_CONTEXTS.find((c) => c.value === context)?.label ?? context;
@@ -13,6 +19,19 @@ function csvEscape(value: string): string {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
+}
+
+function exportTimestamp(): string {
+  return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 export function buildReadingsCsv(readings: Reading[]): string {
@@ -27,27 +46,26 @@ export function buildReadingsCsv(readings: Reading[]): string {
   return [header, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n');
 }
 
-export async function exportReadingsCsv(readings: Reading[]): Promise<void> {
+export function prepareReadingsCsv(readings: Reading[]): PreparedExport {
   const csv = buildReadingsCsv(readings);
-  const file = new File(Paths.cache, `sugartrack-readings-${Date.now()}.csv`);
+  const filename = `sugartrack-readings-${exportTimestamp()}.csv`;
+  const file = new File(Paths.cache, filename);
   if (file.exists) file.delete();
   file.create();
   file.write(csv);
 
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: 'Export Readings CSV' });
-  }
+  return { file, filename, mimeType: 'text/csv' };
 }
 
-function buildReadingsHtml(readings: Reading[], profile: Profile | null): string {
+export function buildReadingsHtml(readings: Reading[], profile: Profile | null): string {
   const rows = readings
     .map(
       (r) => `
       <tr>
-        <td>${new Date(r.timestamp).toLocaleString()}</td>
-        <td>${r.value} ${r.unit}</td>
-        <td>${contextLabel(r.context)}</td>
-        <td>${r.note ?? ''}</td>
+        <td>${escapeHtml(new Date(r.timestamp).toLocaleString())}</td>
+        <td>${escapeHtml(`${r.value} ${r.unit}`)}</td>
+        <td>${escapeHtml(contextLabel(r.context))}</td>
+        <td>${escapeHtml(r.note ?? '')}</td>
       </tr>`
     )
     .join('');
@@ -68,9 +86,15 @@ function buildReadingsHtml(readings: Reading[], profile: Profile | null): string
       <body>
         <h1>SugarTrack Blood Sugar Report</h1>
         <div class="meta">
-          ${profile?.name ? `Patient: ${profile.name}<br/>` : ''}
-          ${profile ? `Target range: ${profile.target_low}-${profile.target_high} ${profile.unit}<br/>` : ''}
-          Generated: ${new Date().toLocaleString()}<br/>
+          ${profile?.name ? `Patient: ${escapeHtml(profile.name)}<br/>` : ''}
+          ${
+            profile
+              ? `Target range: ${escapeHtml(`${profile.target_low}-${profile.target_high} ${profile.unit}`)}<br/>`
+              : ''
+          }
+          ${profile?.doctor_name ? `Doctor: ${escapeHtml(profile.doctor_name)}<br/>` : ''}
+          ${profile?.doctor_contact ? `Doctor contact: ${escapeHtml(profile.doctor_contact)}<br/>` : ''}
+          Generated: ${escapeHtml(new Date().toLocaleString())}<br/>
           Total readings: ${readings.length}
         </div>
         <table>
@@ -86,11 +110,40 @@ function buildReadingsHtml(readings: Reading[], profile: Profile | null): string
   `;
 }
 
-export async function exportReadingsPdf(readings: Reading[], profile: Profile | null): Promise<void> {
+export async function prepareReadingsPdf(
+  readings: Reading[],
+  profile: Profile | null
+): Promise<PreparedExport> {
   const html = buildReadingsHtml(readings, profile);
   const { uri } = await Print.printToFileAsync({ html, base64: false });
+  const filename = `sugartrack-report-${exportTimestamp()}.pdf`;
+  const printedFile = new File(uri);
+  const file = new File(Paths.cache, filename);
+  await printedFile.copy(file, { overwrite: true });
 
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Export Readings PDF' });
+  return { file, filename, mimeType: 'application/pdf' };
+}
+
+export async function savePreparedExport(preparedExport: PreparedExport): Promise<string | null> {
+  let directory: Directory;
+  try {
+    directory = await Directory.pickDirectoryAsync();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/cancel/i.test(message)) return null;
+    throw error;
   }
+
+  const destination = directory.createFile(preparedExport.filename, preparedExport.mimeType);
+  destination.write(await preparedExport.file.bytes());
+  return destination.uri;
+}
+
+export async function sharePreparedExport(preparedExport: PreparedExport): Promise<boolean> {
+  if (!(await Sharing.isAvailableAsync())) return false;
+  await Sharing.shareAsync(preparedExport.file.uri, {
+    mimeType: preparedExport.mimeType,
+    dialogTitle: `Share ${preparedExport.filename}`,
+  });
+  return true;
 }

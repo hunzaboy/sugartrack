@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Alert, View } from 'react-native';
+import { ScrollView, StyleSheet, Alert, View, Text } from 'react-native';
 import { Field } from './Field';
 import { ChoicePicker } from './ChoicePicker';
 import { Button } from './Button';
 import { PhotoPicker } from './PhotoPicker';
 import { DateTimeField } from './DateTimeField';
-import { spacing } from '../lib/theme';
+import { cardShadow, colors, fontFamily, fontSize, radius, spacing } from '../lib/theme';
 import { READING_CONTEXTS } from '../lib/types';
 import type { Reading, ReadingContext, GlucoseUnit } from '../lib/types';
 
@@ -57,17 +57,25 @@ export function ReadingForm({ initial, unit, onSubmit, onDelete, submitLabel }: 
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <Field
-        label={`Blood Sugar (${initial?.unit ?? unit})`}
-        value={value}
-        onChangeText={setValue}
-        keyboardType="decimal-pad"
-        placeholder="e.g. 110"
-      />
-      <DateTimeField label="Date & Time" value={timestamp} onChange={setTimestamp} />
-      <ChoicePicker label="Context" choices={READING_CONTEXTS} value={context} onChange={setContext} />
-      <PhotoPicker uri={photoUri} onChange={setPhotoUri} />
-      <Field label="Note (optional)" value={note} onChangeText={setNote} multiline placeholder="e.g. felt fine" />
+      <Text style={styles.intro}>Enter the value shown on your glucose meter.</Text>
+
+      <View style={styles.card}>
+        <Field
+          label={`Blood sugar (${initial?.unit ?? unit})`}
+          value={value}
+          onChangeText={setValue}
+          keyboardType="decimal-pad"
+          placeholder="e.g. 110"
+        />
+        <DateTimeField label="Date & time" value={timestamp} onChange={setTimestamp} />
+        <ChoicePicker label="Context" choices={READING_CONTEXTS} value={context} onChange={setContext} />
+      </View>
+
+      <Text style={styles.optionalLabel}>Optional details</Text>
+      <View style={styles.card}>
+        <PhotoPicker uri={photoUri} onChange={setPhotoUri} />
+        <Field label="Note" value={note} onChangeText={setNote} multiline placeholder="e.g. felt fine" />
+      </View>
 
       <Button title={saving ? 'Saving...' : submitLabel} onPress={handleSubmit} disabled={saving} />
 
@@ -83,8 +91,31 @@ export function ReadingForm({ initial, unit, onSubmit, onDelete, submitLabel }: 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   content: {
     padding: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  intro: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    marginBottom: spacing.md,
+  },
+  optionalLabel: {
+    color: colors.textMuted,
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.sm - 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    ...cardShadow,
   },
 });

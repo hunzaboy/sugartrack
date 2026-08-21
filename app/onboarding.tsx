@@ -20,8 +20,8 @@ export default function Onboarding() {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    const low = parseInt(targetLow, 10);
-    const high = parseInt(targetHigh, 10);
+    const low = parseFloat(targetLow);
+    const high = parseFloat(targetHigh);
     if (!name.trim()) {
       Alert.alert('Name required', 'Please enter a name to continue.');
       return;

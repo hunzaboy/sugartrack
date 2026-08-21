@@ -15,7 +15,7 @@ export default function PrivacyPolicy() {
           <Link href="/">SugarTrack</Link>
         </p>
         <h1>Privacy Policy</h1>
-        <p className="tagline">Last updated: 19 August 2026</p>
+        <p className="tagline">Last updated: 20 August 2026</p>
 
         <div className="section">
           <h2>Summary</h2>
@@ -94,9 +94,11 @@ export default function PrivacyPolicy() {
         <div className="section">
           <h2>Export and backup</h2>
           <p>
-            You can export a PDF or CSV report, or a backup file, using
-            Android&apos;s share sheet. Where that file goes (email, Drive,
-            another app) is your choice. SugarTrack does not upload it.
+            You can save a PDF or CSV report to a folder you choose on your
+            Android device. After saving, you may optionally open
+            Android&apos;s share sheet to send the file by email, Drive, or
+            another app. Backup files also use Android&apos;s share sheet.
+            SugarTrack does not upload these files itself.
           </p>
         </div>
 

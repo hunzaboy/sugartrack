@@ -47,7 +47,7 @@ export function Button({ title, onPress, variant = 'primary', disabled, style }:
 const styles = StyleSheet.create({
   base: {
     minHeight: touchTarget.minHeight,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.lg,

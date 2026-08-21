@@ -21,12 +21,12 @@
       "appIcon": "play-store/icon-512.png",
       "featureGraphic": "play-store/feature-graphic.jpg",
       "phoneScreenshots": [
-        "play-store/screenshots/dashboard.jpg",
-        "play-store/screenshots/add-reading.jpg",
-        "play-store/screenshots/trends.jpg",
-        "play-store/screenshots/history.jpg",
-        "play-store/screenshots/export.jpg",
-        "play-store/screenshots/settings.jpg"
+        "play-store/screenshots/01-log-readings.jpg",
+        "play-store/screenshots/02-daily-trends.jpg",
+        "play-store/screenshots/03-every-reading.jpg",
+        "play-store/screenshots/04-history.jpg",
+        "play-store/screenshots/05-save-reports.jpg",
+        "play-store/screenshots/06-private-offline.jpg"
       ],
       "category": "Health & Fitness",
       "contactEmail": "hunzaboy@gmail.com",

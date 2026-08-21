@@ -1,18 +1,21 @@
 export const colors = {
-  background: '#FFFFFF',
-  surface: '#F5F7FA',
-  border: '#D7DCE2',
-  text: '#161B21',
-  textMuted: '#4A5561',
-  primary: '#1F6FEB',
+  background: '#F2F8F6',
+  surface: '#FFFFFF',
+  surfaceMuted: '#E8F4F1',
+  border: '#D8E7E3',
+  text: '#17211F',
+  textMuted: '#53645F',
+  primary: '#2E8B7A',
+  primaryDark: '#21665A',
+  primarySoft: '#DDF1EC',
   primaryText: '#FFFFFF',
-  danger: '#C0392B',
-  low: '#D9822B',
-  inRange: '#1E8E3E',
-  high: '#C0392B',
-  lowBg: '#FCF0DF',
-  inRangeBg: '#E6F4EA',
-  highBg: '#FBEAE8',
+  danger: '#B83A32',
+  low: '#D47B18',
+  inRange: '#278A4B',
+  high: '#C4473D',
+  lowBg: '#FFF1DC',
+  inRangeBg: '#E3F4E8',
+  highBg: '#FBE8E6',
 };
 
 export const spacing = {
@@ -36,8 +39,10 @@ export const touchTarget = {
 };
 
 export const radius = {
-  md: 12,
-  lg: 16,
+  sm: 12,
+  md: 18,
+  lg: 24,
+  pill: 999,
 };
 
 export const fontFamily = {
@@ -46,11 +51,11 @@ export const fontFamily = {
 };
 
 export const cardShadow = {
-  shadowColor: '#000',
-  shadowOpacity: 0.06,
-  shadowRadius: 8,
-  shadowOffset: { width: 0, height: 2 },
-  elevation: 2,
+  shadowColor: '#123C34',
+  shadowOpacity: 0.09,
+  shadowRadius: 14,
+  shadowOffset: { width: 0, height: 5 },
+  elevation: 4,
 };
 
 import type { ReadingStatus } from './types';

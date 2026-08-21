@@ -56,8 +56,8 @@ export default function SettingsScreen() {
   const showBackupReminder = daysSinceBackup === null || daysSinceBackup >= DAYS_UNTIL_BACKUP_REMINDER;
 
   const handleSaveProfile = async () => {
-    const low = parseInt(targetLow, 10);
-    const high = parseInt(targetHigh, 10);
+    const low = parseFloat(targetLow);
+    const high = parseFloat(targetHigh);
     if (!name.trim()) {
       Alert.alert('Name required', 'Please enter a name.');
       return;
