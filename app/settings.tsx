@@ -7,7 +7,9 @@ import { ChoicePicker } from '../components/ChoicePicker';
 import { Button } from '../components/Button';
 import { SectionTitle } from '../components/Typography';
 import { getProfile, updateProfile } from '../lib/db';
-import { exportBackup, importBackup } from '../lib/backup';
+import { prepareBackup, importBackup } from '../lib/backup';
+import { savePreparedExport, sharePreparedExport } from '../lib/export';
+import type { PreparedExport } from '../lib/export';
 import { requestNotificationPermission, scheduleDailyReminder, cancelDailyReminder } from '../lib/notifications';
 import { useAccessibility } from '../lib/accessibility';
 import { colors, fontSize, spacing, radius } from '../lib/theme';
@@ -116,13 +118,32 @@ export default function SettingsScreen() {
     await updateProfile({ large_text: value ? 1 : 0 });
   };
 
+  const offerShare = (preparedExport: PreparedExport) => {
+    Alert.alert('Saved to your device', `${preparedExport.filename} was saved to the folder you selected.`, [
+      { text: 'Done', style: 'cancel' },
+      {
+        text: 'Share now',
+        onPress: async () => {
+          const isAvailable = await sharePreparedExport(preparedExport);
+          if (!isAvailable) {
+            Alert.alert('Sharing unavailable', 'This device cannot open the sharing menu.');
+          }
+        },
+      },
+    ]);
+  };
+
   const handleExportBackup = async () => {
     setBackupBusy(true);
     try {
-      await exportBackup();
+      const preparedExport = await prepareBackup();
+      const savedUri = await savePreparedExport(preparedExport);
+      if (!savedUri) return;
+      await updateProfile({ last_backup_at: new Date().toISOString() });
       load();
+      offerShare(preparedExport);
     } catch {
-      Alert.alert('Backup Failed', 'Could not create a backup. Please try again.');
+      Alert.alert('Backup Failed', 'Could not save a backup. Please try again.');
     } finally {
       setBackupBusy(false);
     }
@@ -229,8 +250,11 @@ export default function SettingsScreen() {
           Last backup: {profile.last_backup_at ? new Date(profile.last_backup_at).toLocaleString() : 'never'}
         </Text>
       )}
+      <Text style={styles.helperText}>
+        Choose a folder on your phone. Nothing is uploaded by SugarTrack. You can share the zip afterwards if you want.
+      </Text>
       <Button
-        title={backupBusy ? 'Working...' : 'Export Backup'}
+        title={backupBusy ? 'Preparing…' : 'Save Backup'}
         onPress={handleExportBackup}
         disabled={backupBusy}
       />

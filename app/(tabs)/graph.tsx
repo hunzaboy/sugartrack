@@ -15,8 +15,7 @@ import {
   convertReadingsToUnit,
   CHART_RANGES,
 } from '../../lib/chartData';
-import type { ChartDataPoint, ChartRange } from '../../lib/chartData';
-import { READING_CONTEXTS } from '../../lib/types';
+import type { ChartRange } from '../../lib/chartData';
 import { colors, fontFamily, fontSize, spacing, radius, cardShadow } from '../../lib/theme';
 import type { Reading, Profile } from '../../lib/types';
 
@@ -27,13 +26,6 @@ const TREND_MODES: { value: TrendMode; label: string }[] = [
   { value: 'readings', label: 'All readings' },
 ];
 
-function pointDetailLabel(point: ChartDataPoint): string {
-  if (point.context === 'Daily average') {
-    return `${point.readingCount} reading${point.readingCount === 1 ? '' : 's'}`;
-  }
-  return READING_CONTEXTS.find((context) => context.value === point.context)?.label ?? point.context;
-}
-
 export default function Graph() {
   const [range, setRange] = useState<ChartRange>('week');
   const [mode, setMode] = useState<TrendMode>('daily');
@@ -41,12 +33,10 @@ export default function Graph() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [chartCardWidth, setChartCardWidth] = useState(0);
-  const [selectedPoint, setSelectedPoint] = useState<ChartDataPoint | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       setLoaded(false);
-      setSelectedPoint(null);
       const start = startOfRange(range).toISOString();
       const end = new Date().toISOString();
       Promise.all([listReadingsInRange(start, end), getProfile()]).then(([r, p]) => {
@@ -66,7 +56,7 @@ export default function Graph() {
       ? readingsToDailyLineData(normalizedReadings, targetLow, targetHigh)
       : readingsToLineData(normalizedReadings, targetLow, targetHigh, true);
   const labelEvery = Math.max(1, Math.ceil(chartData.length / (mode === 'daily' ? 7 : 5)));
-  const interactiveChartData = chartData.map((point, index) => ({
+  const labeledChartData = chartData.map((point, index) => ({
     ...point,
     label: index % labelEvery === 0 || index === chartData.length - 1 ? point.label : '',
     labelTextStyle:
@@ -83,7 +73,6 @@ export default function Graph() {
             ],
           }
         : undefined,
-    onPress: () => setSelectedPoint(point),
   }));
   const maxValue = chartMaxValue(
     normalizedReadings.map((reading) => reading.value),
@@ -97,15 +86,7 @@ export default function Graph() {
     <Screen scroll style={styles.content}>
       <ScreenTitle style={{ marginBottom: spacing.md }}>Trends</ScreenTitle>
 
-      <ChoicePicker
-        label="View"
-        choices={TREND_MODES}
-        value={mode}
-        onChange={(value) => {
-          setMode(value);
-          setSelectedPoint(null);
-        }}
-      />
+      <ChoicePicker label="View" choices={TREND_MODES} value={mode} onChange={setMode} />
 
       <ChoicePicker
         label="Range"
@@ -134,18 +115,15 @@ export default function Graph() {
         onLayout={(event) => setChartCardWidth(event.nativeEvent.layout.width)}
       >
         <View style={styles.chartHeader}>
-          <View>
-            <Text style={styles.chartTitle}>{mode === 'daily' ? 'Daily averages' : 'Every reading'}</Text>
-            <Text style={styles.chartSubtitle}>
-              {chartData.length} {mode === 'daily' ? 'day' : 'reading'}
-              {chartData.length === 1 ? '' : 's'} · {unit}
-            </Text>
-          </View>
-          <Text style={styles.tapHint}>Tap a point</Text>
+          <Text style={styles.chartTitle}>{mode === 'daily' ? 'Daily averages' : 'Every reading'}</Text>
+          <Text style={styles.chartSubtitle}>
+            {chartData.length} {mode === 'daily' ? 'day' : 'reading'}
+            {chartData.length === 1 ? '' : 's'} · {unit}
+          </Text>
         </View>
         {!loaded || chartWidth === 0 ? null : chartData.length > 0 ? (
           <LineChart
-            data={interactiveChartData}
+            data={labeledChartData}
             height={260}
             width={chartWidth}
             thickness={3}
@@ -179,27 +157,6 @@ export default function Graph() {
           <Text style={styles.empty}>No readings in this range yet.</Text>
         )}
       </View>
-
-      {selectedPoint ? (
-        <View style={styles.detailCard}>
-          <View>
-            <Text style={styles.detailDate}>
-              {mode === 'daily'
-                ? new Date(selectedPoint.timestamp).toLocaleDateString(undefined, {
-                    weekday: 'long',
-                    month: 'long',
-                    day: 'numeric',
-                  })
-                : new Date(selectedPoint.timestamp).toLocaleString()}
-            </Text>
-            <Text style={styles.detailContext}>{pointDetailLabel(selectedPoint)}</Text>
-          </View>
-          <View style={styles.detailValueRow}>
-            <Text style={styles.detailValue}>{selectedPoint.value}</Text>
-            <Text style={styles.detailUnit}>{unit}</Text>
-          </View>
-        </View>
-      ) : null}
     </Screen>
   );
 }
@@ -238,9 +195,6 @@ const styles = StyleSheet.create({
     ...cardShadow,
   },
   chartHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
   chartTitle: {
@@ -253,48 +207,9 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm - 4,
     marginTop: 2,
   },
-  tapHint: {
-    color: colors.primary,
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.sm - 4,
-  },
   empty: {
     fontSize: fontSize.md,
     color: colors.textMuted,
     textAlign: 'center',
-  },
-  detailCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    backgroundColor: colors.primarySoft,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginTop: spacing.md,
-  },
-  detailDate: {
-    color: colors.text,
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.sm,
-  },
-  detailContext: {
-    color: colors.textMuted,
-    fontSize: fontSize.sm - 3,
-    marginTop: 2,
-  },
-  detailValueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  detailValue: {
-    color: colors.primaryDark,
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.lg,
-  },
-  detailUnit: {
-    color: colors.textMuted,
-    fontSize: fontSize.sm - 3,
   },
 });

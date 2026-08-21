@@ -1,8 +1,8 @@
 import * as SQLite from 'expo-sqlite';
 import { zip, unzip } from 'react-native-zip-archive';
-import * as Sharing from 'expo-sharing';
 import { File, Directory, Paths } from 'expo-file-system';
-import { closeDatabase, getDatabase, updateProfile, DATABASE_NAME } from './db';
+import { closeDatabase, getDatabase, DATABASE_NAME } from './db';
+import type { PreparedExport } from './export';
 
 const PHOTOS_DIR_NAME = 'photos';
 const BACKUP_DB_ENTRY_NAME = 'sugartrack.db';
@@ -24,7 +24,7 @@ function freshTempDirectory(name: string): Directory {
   return dir;
 }
 
-export async function exportBackup(): Promise<string> {
+export async function prepareBackup(): Promise<PreparedExport> {
   await getDatabase();
 
   const stagingDir = freshTempDirectory('sugartrack-backup-staging');
@@ -43,7 +43,8 @@ export async function exportBackup(): Promise<string> {
   }
 
   const dateStr = new Date().toISOString().slice(0, 10);
-  const zipFile = new File(Paths.cache, `sugartrack-backup-${dateStr}.zip`);
+  const filename = `sugartrack-backup-${dateStr}.zip`;
+  const zipFile = new File(Paths.cache, filename);
   if (zipFile.exists) zipFile.delete();
 
   // Zip the staging directory itself (not an array of its contents) so entry
@@ -52,16 +53,7 @@ export async function exportBackup(): Promise<string> {
 
   stagingDir.delete();
 
-  await updateProfile({ last_backup_at: new Date().toISOString() });
-
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(zipFile.uri, {
-      mimeType: 'application/zip',
-      dialogTitle: 'Save SugarTrack Backup',
-    });
-  }
-
-  return zipFile.uri;
+  return { file: zipFile, filename, mimeType: 'application/zip' };
 }
 
 export async function importBackup(zipUri: string): Promise<void> {

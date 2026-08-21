@@ -7,7 +7,7 @@ import type { Reading, Profile } from './types';
 export interface PreparedExport {
   file: File;
   filename: string;
-  mimeType: 'text/csv' | 'application/pdf';
+  mimeType: 'text/csv' | 'application/pdf' | 'application/zip';
 }
 
 function contextLabel(context: string): string {
