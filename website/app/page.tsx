@@ -76,7 +76,7 @@ export default function Home() {
           </p>
           <p>
             There is no cloud backup unless you make one yourself. Use
-            Export for Doctor (PDF or CSV) or Backup in settings to save a
+            Export for Doctor (PDF) or Backup in settings to save a
             copy to a folder on the phone.
           </p>
         </div>

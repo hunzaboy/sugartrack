@@ -15,7 +15,7 @@ vi.mock('expo-file-system', () => ({
   Paths: { cache: 'cache' },
 }));
 
-import { buildReadingsCsv, buildReadingsHtml } from './export';
+import { buildReadingsHtml, formatExportDate, groupReadingsByDay } from './export';
 import type { Profile, Reading } from './types';
 
 const reading: Reading = {
@@ -49,11 +49,39 @@ describe('readings export', () => {
     vi.clearAllMocks();
   });
 
-  it('quotes CSV fields containing commas and quotes', () => {
-    const csv = buildReadingsCsv([reading]);
+  it('names the month so a date cannot be read the wrong way round', () => {
+    // 05/08 vs 08/05 is a three-month error on a clinical record; a named
+    // month removes the ambiguity. The name itself follows the locale.
+    expect(formatExportDate(new Date(2026, 7, 5))).toMatch(/^05 \S+ 2026$/);
+    expect(formatExportDate(new Date(2026, 7, 5))).not.toMatch(/\d\/\d/);
+  });
 
-    expect(csv).toContain('"Breakfast, ""light"""');
-    expect(csv).toContain('Fasting');
+  it('groups readings into one section per day, oldest first', () => {
+    const days = groupReadingsByDay([
+      { ...reading, id: 3, timestamp: '2026-08-21T09:00:00' },
+      { ...reading, id: 1, timestamp: '2026-08-20T08:00:00' },
+      { ...reading, id: 2, timestamp: '2026-08-20T19:00:00' },
+    ]);
+
+    expect(days).toHaveLength(2);
+    expect(days[0].readings.map((r) => r.id)).toEqual([1, 2]);
+    expect(days[1].readings.map((r) => r.id)).toEqual([3]);
+  });
+
+  it('marks fasting readings for the doctor, and leaves other contexts plain', () => {
+    const html = buildReadingsHtml(
+      [
+        { ...reading, id: 1, context: 'fasting', timestamp: '2026-08-20T08:00:00' },
+        { ...reading, id: 2, context: 'after_meal', timestamp: '2026-08-20T14:00:00' },
+      ],
+      profile
+    );
+
+    expect(html.match(/<tr class="fasting">/g)).toHaveLength(1);
+    expect(html).toContain('<tr class="">');
+    // The day heading carries the date, so the rows only need the time.
+    expect(html).toMatch(/Thursday, 20 \S+ 2026/);
+    expect(html).toContain('2 readings');
   });
 
   it('escapes user-entered text in PDF HTML', () => {

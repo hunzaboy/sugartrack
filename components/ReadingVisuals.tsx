@@ -4,7 +4,7 @@ import { useAccessibility } from '../lib/accessibility';
 import { cardShadow, fontSize, radius, spacing, statusColor } from '../lib/theme';
 import { getReadingStatus, READING_CONTEXTS } from '../lib/types';
 import type { Reading, ReadingStatus } from '../lib/types';
-import { formatReadingTimestamp, formatTime } from '../lib/datetime';
+import { formatReadingTimestamp } from '../lib/datetime';
 
 interface StatusChipProps {
   status: ReadingStatus;
@@ -69,8 +69,6 @@ interface ReadingCardProps {
   targetHigh: number;
   showRange?: boolean;
   hero?: boolean;
-  /** Show only the time, for rows already grouped under a date heading. */
-  timeOnly?: boolean;
 }
 
 export function ReadingCard({
@@ -79,7 +77,6 @@ export function ReadingCard({
   targetHigh,
   showRange = false,
   hero = false,
-  timeOnly = false,
 }: ReadingCardProps) {
   const { scale, colors } = useAccessibility();
   const status = getReadingStatus(reading.value, targetLow, targetHigh);
@@ -96,7 +93,7 @@ export function ReadingCard({
     >
       <View style={styles.cardTopRow}>
         <Caption style={styles.timestamp}>
-          {timeOnly ? formatTime(reading.timestamp) : formatReadingTimestamp(reading.timestamp)}
+          {formatReadingTimestamp(reading.timestamp)}
         </Caption>
         <StatusChip status={status} />
       </View>

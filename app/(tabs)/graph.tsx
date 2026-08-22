@@ -8,108 +8,98 @@ import { AppText, Caption, ScreenTitle } from '../../components/Typography';
 import { listReadingsInRange } from '../../lib/readings';
 import { getProfile } from '../../lib/db';
 import {
-  readingsToDailyLineData,
   readingsToLineData,
-  startOfRange,
+  startOfWindow,
+  chartViewConfig,
   chartMaxValue,
   chartMinValue,
   convertReadingsToUnit,
   rangeStats,
-  CHART_RANGES,
+  CHART_VIEWS,
+  CHART_WINDOW_DAYS,
 } from '../../lib/chartData';
-import type { ChartDataPoint, ChartRange } from '../../lib/chartData';
+import type { ChartDataPoint, ChartView } from '../../lib/chartData';
 import { cardShadow, chartHeight, fontSize, radius, spacing } from '../../lib/theme';
 import { useAccessibility } from '../../lib/accessibility';
+import { formatReadingTimestamp } from '../../lib/datetime';
+import { READING_CONTEXTS } from '../../lib/types';
 import type { Reading, Profile } from '../../lib/types';
 
-type TrendMode = 'daily' | 'readings';
-
-const TREND_MODES: { value: TrendMode; label: string }[] = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'readings', label: 'All readings' },
-];
+/** Raw context values are stored, not shown: "after_meal" reads as "After meal". */
+function contextLabel(context: string): string {
+  return READING_CONTEXTS.find((item) => item.value === context)?.label ?? context;
+}
 
 export default function Graph() {
   const { colors, scale } = useAccessibility();
-  const [range, setRange] = useState<ChartRange>('week');
-  const [mode, setMode] = useState<TrendMode>('daily');
+  const [view, setView] = useState<ChartView>('days');
   const [readings, setReadings] = useState<Reading[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const [chartCardWidth, setChartCardWidth] = useState(0);
 
+  // One window for both views, so the summary always describes the chart.
   useFocusEffect(
     useCallback(() => {
       setLoaded(false);
       setFailed(false);
-      const start = startOfRange(range).toISOString();
-      const end = new Date().toISOString();
-      Promise.all([listReadingsInRange(start, end), getProfile()])
+      const start = startOfWindow();
+      Promise.all([listReadingsInRange(start.toISOString(), new Date().toISOString()), getProfile()])
         .then(([r, p]) => {
           setReadings(r);
           setProfile(p);
         })
         .catch(() => setFailed(true))
         .finally(() => setLoaded(true));
-    }, [range])
+    }, [])
   );
 
+  const config = chartViewConfig(view);
   const targetLow = profile?.target_low ?? 70;
   const targetHigh = profile?.target_high ?? 180;
   const unit = profile?.unit ?? 'mg/dL';
-  const normalizedReadings = convertReadingsToUnit(readings, unit);
-  const stats = rangeStats(normalizedReadings, targetLow, targetHigh);
   const decimals = unit === 'mmol/L' ? 1 : 0;
 
-  const chartData =
-    mode === 'daily'
-      ? readingsToDailyLineData(
-          normalizedReadings,
-          targetLow,
-          targetHigh,
-          range === 'day' || range === 'week' ? 'weekday' : 'date'
-        )
-      : readingsToLineData(normalizedReadings, targetLow, targetHigh, true);
+  const normalizedReadings = convertReadingsToUnit(readings, unit);
+  const stats = rangeStats(normalizedReadings, targetLow, targetHigh);
 
-  // gifted-charts sizes each label slot from `spacing`, which truncated labels
-  // mid-word ("Sat" -> "Sa"). An explicit width per label gives every one the
-  // same room and keeps them centred on their point.
-  const labelWidth = Math.round(72 * Math.max(scale, 1));
-  const labelEvery = Math.max(1, Math.ceil(chartData.length / (mode === 'daily' ? 7 : 5)));
-  const labeledChartData = chartData.map((point, index) => ({
-    ...point,
-    label: index % labelEvery === 0 || index === chartData.length - 1 ? point.label : '',
-    labelTextStyle: {
-      color: colors.textMuted,
-      fontSize: fontSize.caption * scale,
-      width: labelWidth,
-      textAlign: 'center' as const,
-    },
-  }));
+  // Every reading is a point in both views — a day with three readings draws
+  // three points. The toggle only changes how the x-axis is labelled: by date,
+  // or by the time each reading was taken. Days with no readings still take
+  // their slot, so skipped days stay visible as gaps rather than pulling their
+  // neighbours together.
+  const chartData = readingsToLineData(normalizedReadings, targetLow, targetHigh, view, {
+    start: startOfWindow(),
+    end: new Date(),
+  });
 
-  const values = normalizedReadings.map((reading) => reading.value);
-  const maxValue = chartMaxValue(values, targetHigh, unit);
-  const minValue = chartMinValue(values, targetLow, unit);
-  // Axis text now respects the in-app scale, so the gutter has to grow with it.
+  const plotted = chartData
+    .map((point) => point.value)
+    .filter((value): value is number => value !== undefined);
+  const maxValue = chartMaxValue(plotted, targetHigh, unit);
+  const minValue = chartMinValue(plotted, targetLow, unit);
+  // Spacing is also each x-axis label's container width, so it has to grow with
+  // the text scale — otherwise Large Text clips the labels it is meant to help.
+  const pointSpacing = Math.round(config.spacing * Math.max(scale, 1));
   const axisFontSize = fontSize.caption * scale;
-  const yAxisLabelWidth = Math.ceil((unit === 'mmol/L' ? 34 : 42) * scale);
-  // `adjustToWidth` overrides endSpacing, so the final x-axis label is centred on
-  // the last point and half of it lands outside the card. Reserving half a label
-  // keeps the rest from being truncated mid-word; the very last one may still be
-  // dropped by the library, which is acceptable — the tooltip gives exact values.
-  const lastLabelOverhang = Math.ceil(labelWidth / 2);
-  const chartWidth = Math.max(
-    chartCardWidth - spacing.md * 2 - yAxisLabelWidth - lastLabelOverhang,
-    0
-  );
+  const yAxisLabelWidth = Math.ceil((unit === 'mmol/L' ? 38 : 42) * scale);
+  // The viewport width. The chart's content is wider than this and scrolls —
+  // that is the point. Passing no width would make the ScrollView as wide as
+  // its content and nothing would scroll.
+  const viewportWidth = Math.max(chartCardWidth - spacing.md * 2 - yAxisLabelWidth, 0);
+
+  // No shaded target band. Both routes the library offers put it in the wrong
+  // place: `spreadAreaData` plots raw values and ignores `yAxisOffset`, and
+  // `customBackground` is positioned against the wrapper rather than the plot
+  // area, landing ~35 mg/dL high. A target zone drawn at the wrong level is
+  // worse than none on a health chart, and the labelled threshold lines below
+  // already say exactly where the range is.
 
   return (
     <Screen scroll style={styles.content}>
       <ScreenTitle style={styles.title}>Trends</ScreenTitle>
 
-      {/* Summary first. These numbers used to be absent entirely; the only way to
-          read a value was to tap a chart point, which was invisible as a target. */}
       {stats ? (
         <View style={[styles.statsCard, { backgroundColor: colors.surface }]}>
           <View style={styles.statsRow}>
@@ -119,9 +109,7 @@ export default function Graph() {
               tone={stats.timeInRange >= 70 ? colors.inRange : colors.low}
             />
             <View style={[styles.statsDivider, { backgroundColor: colors.border }]} />
-            {/* Just "Average" — "Average (mg/dL)" broke mid-token in the column.
-                The unit is already on the value and in the chart subtitle. */}
-            <Stat label="Average" value={`${stats.average.toFixed(decimals)}`} unit={unit} />
+            <Stat label="Average" value={stats.average.toFixed(decimals)} unit={unit} />
             <View style={[styles.statsDivider, { backgroundColor: colors.border }]} />
             <Stat label="Readings" value={String(stats.count)} />
           </View>
@@ -133,13 +121,14 @@ export default function Graph() {
         </View>
       ) : null}
 
-      <ChoicePicker label="View" choices={TREND_MODES} value={mode} onChange={setMode} />
-
+      {/* The entire control surface: two short chips that always sit on one
+          row. The previous three range pills wrapped onto a second line, and
+          onto three lines at larger text sizes. */}
       <ChoicePicker
-        label="Range"
-        choices={CHART_RANGES.map((r) => ({ value: r.value, label: r.label }))}
-        value={range}
-        onChange={setRange}
+        label="View"
+        choices={CHART_VIEWS.map((v) => ({ value: v.value, label: v.label }))}
+        value={view}
+        onChange={setView}
       />
 
       <View
@@ -148,80 +137,129 @@ export default function Graph() {
       >
         <View style={styles.chartHeader}>
           <AppText variant="body" bold>
-            {mode === 'daily' ? 'Daily averages' : 'Every reading'}
+            {config.title}
           </AppText>
-          <Caption>
-            Target {targetLow}–{targetHigh} {unit} · touch and hold the chart to read a value
-          </Caption>
+          <Caption>Last {CHART_WINDOW_DAYS} days · touch and hold for details</Caption>
         </View>
 
         {failed ? (
           <AppText variant="body" tone="muted" style={styles.centered}>
             Could not load your readings. Pull down on History to retry.
           </AppText>
-        ) : !loaded || chartWidth === 0 ? (
+        ) : !loaded || viewportWidth === 0 ? (
           <View style={[styles.placeholder, { backgroundColor: colors.surfaceMuted }]} />
-        ) : chartData.length > 0 ? (
+        ) : stats ? (
           <LineChart
-            data={labeledChartData}
+            key={view}
+            data={chartData}
             height={chartHeight.full}
-            width={chartWidth}
+            width={viewportWidth}
+            // Fixed spacing + scrolling, instead of squeezing the range into one
+            // screen. `spacing` is also each x-axis label's container width, so
+            // this is what stops labels being ellipsised and dropped.
+            spacing={pointSpacing}
+            // Do not invent readings. With interpolation on (the library
+            // default) a stretch of days with no readings was drawn as a long
+            // straight line that crossed the high threshold — implying weeks of
+            // high readings where there was simply no data. A gap must read as
+            // a gap on a health chart.
+            interpolateMissingValues={false}
+            extrapolateMissingValues={false}
+            scrollToEnd
+            scrollAnimation={false}
+            showScrollIndicator
+            // The chart's horizontal ScrollView lives inside the screen's
+            // vertical one.
+            nestedScrollEnabled
+            // Each end needs at least half a label box, since labels are centred
+            // on their point. 0.7 clears that without wasting plot width.
+            // A full slot in front so the first label, which is centred on the
+            // first point, is not cut off; less at the end, which is only dead
+            // space once the chart has scrolled to the newest reading.
+            initialSpacing={pointSpacing}
+            endSpacing={Math.round(pointSpacing * 0.6)}
             thickness={3}
             color={colors.primary}
+            // No `colors` band-recolouring of the line. It renders through an
+            // SVG mask over the line path, and with interpolation disabled the
+            // path is broken by design — the mask then filled the whole plot
+            // with solid blocks. Status still reads from the dot colours, which
+            // is the agreed design.
             maxValue={maxValue - minValue}
             yAxisOffset={minValue}
+            noOfSections={4}
             hideRules
             yAxisTextStyle={{ color: colors.textMuted, fontSize: axisFontSize }}
             xAxisLabelTextStyle={{ color: colors.textMuted, fontSize: axisFontSize }}
+            /**
+             * This is what sets the gap between the axis line and the labels.
+             *
+             * The label box is anchored by its *bottom* and grows upward, so a
+             * taller box pushes the text up onto the axis line and a shorter one
+             * drops it clear. Keep it just tall enough for one line.
+             * `xAxisLabelsVerticalShift` looks like the right prop but is not —
+             * it offsets the wrapper containing both the plot and the labels, so
+             * they move together and the gap never changes.
+             */
+            xAxisLabelsHeight={Math.round(18 * Math.max(scale, 1))}
             yAxisThickness={0}
             xAxisThickness={1}
             xAxisColor={colors.border}
+            yAxisLabelWidth={yAxisLabelWidth}
             dataPointsRadius={5}
             curved
-            adjustToWidth={mode === 'daily'}
-            disableScroll={mode === 'daily'}
-            initialSpacing={28}
-            // Enough room for the final x-axis label; at 32 the last weekday
-            // rendered clipped against the plot's right edge.
-            endSpacing={52}
-            spacing={mode === 'readings' ? 52 : undefined}
-            yAxisLabelWidth={yAxisLabelWidth}
             showFractionalValues={unit === 'mmol/L'}
             roundToDigits={decimals}
             formatYLabel={(label) => Number(label).toFixed(decimals)}
+            // Reference lines sit in a fixed layer, so the thresholds stay put
+            // while the data scrolls underneath.
             showReferenceLine1
             referenceLine1Position={targetHigh}
-            referenceLine1Config={{ color: colors.high, dashWidth: 4, dashGap: 4, thickness: 1.5 }}
+            referenceLine1Config={{
+              color: colors.high,
+              dashWidth: 6,
+              dashGap: 5,
+              thickness: 1.5,
+            }}
             showReferenceLine2
             referenceLine2Position={targetLow}
-            referenceLine2Config={{ color: colors.low, dashWidth: 4, dashGap: 4, thickness: 1.5 }}
-            // A drag anywhere on the plot, rather than a 5px per-point tap target.
+            referenceLine2Config={{
+              color: colors.low,
+              dashWidth: 6,
+              dashGap: 5,
+              thickness: 1.5,
+            }}
             pointerConfig={{
               pointerStripHeight: chartHeight.full,
               pointerStripColor: colors.textMuted,
               pointerStripWidth: 1.5,
               pointerColor: colors.primary,
               radius: 6,
-              activatePointersOnLongPress: false,
+              // Long-press, not touch. The pointer defaults to grabbing the
+              // gesture the instant a finger lands, which swallowed the
+              // horizontal swipe and made the chart impossible to scroll.
+              // Swipe pans; touch and hold inspects a day.
+              activatePointersOnLongPress: true,
+              activatePointersDelay: 200,
               autoAdjustPointerLabelPosition: true,
-              pointerLabelWidth: 150,
-              pointerLabelHeight: 74,
+              hidePointerForMissingValues: true,
+              pointerLabelWidth: 170,
+              pointerLabelHeight: 78,
               pointerLabelComponent: (items: ChartDataPoint[]) => {
                 const point = items?.[0];
-                if (!point) return null;
+                if (!point || point.value === undefined) return null;
                 return (
                   <View style={[styles.tooltip, { backgroundColor: colors.inverseSurface }]}>
                     <AppText variant="caption" tone="inverse">
-                      {point.label || point.context}
+                      {formatReadingTimestamp(point.timestamp)}
                     </AppText>
                     <AppText variant="bodyLg" bold tone="inverse">
                       {point.value.toFixed(decimals)} {unit}
                     </AppText>
-                    {point.readingCount > 1 ? (
-                      <AppText variant="caption" tone="inverse">
-                        {point.readingCount} readings
-                      </AppText>
-                    ) : null}
+                    <AppText variant="caption" tone="inverse">
+                      {contextLabel(point.context)}
+                      {point.readingCount > 1 ? ` · ${point.readingCount} that day` : ''}
+                    </AppText>
                   </View>
                 );
               },
@@ -333,8 +371,9 @@ const styles = StyleSheet.create({
   chartCard: {
     borderRadius: radius.lg,
     padding: spacing.md,
-    minHeight: chartHeight.full,
-    justifyContent: 'center',
+    // No fixed height or centring: the chart plus its label row decides the
+    // height, otherwise the labels are clipped against the card's edge.
+    paddingBottom: spacing.lg,
     overflow: 'hidden',
     ...cardShadow,
   },

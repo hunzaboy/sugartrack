@@ -28,7 +28,7 @@ const MENU_ITEMS: {
   {
     href: '/export',
     label: 'Export for doctor',
-    subtitle: 'Save a PDF or spreadsheet',
+    subtitle: 'Save a PDF report',
     icon: 'document-text-outline',
   },
   {

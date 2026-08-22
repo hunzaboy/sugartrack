@@ -130,12 +130,11 @@ export default function History() {
               android_ripple={{ color: colors.surfaceRipple }}
               style={styles.row}
             >
-              <ReadingCard
-                reading={item}
-                targetLow={targetLow}
-                targetHigh={targetHigh}
-                timeOnly
-              />
+              {/* Full "Today, 3:45 pm" on every row, not just the time: the
+                  date heading scrolls out of view, and a row on its own — or
+                  copied into a message to a doctor — has to say which day it
+                  belongs to. */}
+              <ReadingCard reading={item} targetLow={targetLow} targetHigh={targetHigh} />
             </Pressable>
           )}
         />

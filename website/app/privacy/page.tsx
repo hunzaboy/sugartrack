@@ -94,7 +94,7 @@ export default function PrivacyPolicy() {
         <div className="section">
           <h2>Export and backup</h2>
           <p>
-            You can save a PDF or CSV report, or a full backup zip, to a
+            You can save a PDF report, or a full backup zip, to a
             folder you choose on your Android device. After saving, you may
             optionally open Android&apos;s share sheet to send the file by
             email, Drive, or another app. SugarTrack does not upload these

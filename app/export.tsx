@@ -8,7 +8,7 @@ import { AppText } from '../components/Typography';
 import { useSnackbar } from '../components/Snackbar';
 import { listReadingsInRange, listReadings } from '../lib/readings';
 import { getProfile } from '../lib/db';
-import { prepareReadingsCsv, prepareReadingsPdf } from '../lib/export';
+import { prepareReadingsPdf } from '../lib/export';
 import { useExportDelivery } from '../lib/useExportDelivery';
 import { useAccessibility } from '../lib/accessibility';
 import { cardShadow, iconSize, radius, spacing } from '../lib/theme';
@@ -27,7 +27,7 @@ export default function ExportScreen() {
   const snackbar = useSnackbar();
   const { deliver } = useExportDelivery();
   const [range, setRange] = useState<RangeOption>('30');
-  const [busy, setBusy] = useState<'pdf' | 'csv' | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const getReadingsForRange = async () => {
     if (range === 'all') return listReadings();
@@ -37,26 +37,23 @@ export default function ExportScreen() {
     return listReadingsInRange(start.toISOString(), new Date().toISOString());
   };
 
-  const run = async (kind: 'pdf' | 'csv') => {
-    setBusy(kind);
+  const run = async () => {
+    setBusy(true);
     try {
       const readings = await getReadingsForRange();
       if (readings.length === 0) {
         snackbar.show('There are no readings in this date range.', { kind: 'error' });
         return;
       }
-      const prepared =
-        kind === 'pdf'
-          ? await prepareReadingsPdf(readings, await getProfile())
-          : prepareReadingsCsv(readings);
-      await deliver(prepared, kind === 'pdf' ? 'PDF report' : 'Spreadsheet');
+      const prepared = await prepareReadingsPdf(readings, await getProfile());
+      await deliver(prepared, 'PDF report');
     } catch (error) {
       snackbar.show(
         error instanceof Error ? error.message : 'Could not save the file. Please try again.',
         { kind: 'error' }
       );
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
 
@@ -75,23 +72,16 @@ export default function ExportScreen() {
       <View style={[styles.optionsCard, { backgroundColor: colors.surface }]}>
         <ChoicePicker label="Date range" choices={RANGE_CHOICES} value={range} onChange={setRange} />
 
+        {/* One export, not two. The CSV was a second path to maintain for a
+            file most people could not open on a phone, while the report the
+            doctor actually reads is the PDF. */}
         <Button
           title="Save PDF report"
           icon="document-text-outline"
-          onPress={() => run('pdf')}
-          loading={busy === 'pdf'}
-          disabled={busy !== null}
-          hint="Best for showing or emailing to your doctor"
-        />
-        <View style={styles.gap} />
-        <Button
-          title="Save spreadsheet"
-          variant="secondary"
-          icon="grid-outline"
-          onPress={() => run('csv')}
-          loading={busy === 'csv'}
-          disabled={busy !== null}
-          hint="A CSV file you can open in Excel or Sheets"
+          onPress={run}
+          loading={busy}
+          disabled={busy}
+          hint="Grouped by day, ready to show or email to your doctor"
         />
       </View>
     </Screen>
@@ -115,8 +105,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.md,
     ...cardShadow,
-  },
-  gap: {
-    height: spacing.md,
   },
 });

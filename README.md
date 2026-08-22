@@ -8,7 +8,7 @@ I built this so I wouldn’t have to keep filling in paper forms and notebooks w
 
 Health numbers are personal. SugarTrack does not talk to a server, does not require a login, and does not send readings anywhere. The database lives on the phone. If the phone is offline, the app still works.
 
-That also means there is no cloud backup unless you make one yourself. Use **Export for Doctor** (PDF or CSV) or **Backup** in settings to copy data off the phone when you want a spare copy.
+That also means there is no cloud backup unless you make one yourself. Use **Export for Doctor** (PDF) or **Backup** in settings to copy data off the phone when you want a spare copy.
 
 ## What it does
 
