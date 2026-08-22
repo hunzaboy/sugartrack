@@ -1,3 +1,7 @@
+> [!NOTE]
+> Google Play version coming soon. Currently in internal testing
+
+
 # SugarTrack
 
 A simple Android app for logging blood sugar readings. **Free. No account. No internet.** Everything stays on the phone.
