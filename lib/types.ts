@@ -7,8 +7,8 @@ export type ReadingContext =
 
 export const READING_CONTEXTS: { value: ReadingContext; label: string }[] = [
   { value: 'fasting', label: 'Fasting' },
-  { value: 'before_meal', label: 'Before Meal' },
-  { value: 'after_meal', label: 'After Meal' },
+  { value: 'before_meal', label: 'Before meal' },
+  { value: 'after_meal', label: 'After meal' },
   { value: 'bedtime', label: 'Bedtime' },
   { value: 'random', label: 'Random' },
 ];

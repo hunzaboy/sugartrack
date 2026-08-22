@@ -1,21 +1,42 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../components/Screen';
+import { ListRow } from '../../components/ListRow';
 import { ScreenTitle } from '../../components/Typography';
-import { colors, fontSize, spacing, radius, touchTarget, cardShadow } from '../../lib/theme';
+import { spacing } from '../../lib/theme';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
 const MENU_ITEMS: {
   href: '/medications' | '/a1c' | '/export' | '/settings';
   label: string;
+  subtitle: string;
   icon: IoniconName;
 }[] = [
-  { href: '/medications', label: 'Medications', icon: 'medical-outline' },
-  { href: '/a1c', label: 'A1C log', icon: 'water-outline' },
-  { href: '/export', label: 'Export for doctor', icon: 'document-text-outline' },
-  { href: '/settings', label: 'Profile, backup & settings', icon: 'settings-outline' },
+  {
+    href: '/medications',
+    label: 'Medications',
+    subtitle: 'Log what you take and when',
+    icon: 'medical-outline',
+  },
+  {
+    href: '/a1c',
+    label: 'A1C log',
+    subtitle: 'Record your lab results',
+    icon: 'water-outline',
+  },
+  {
+    href: '/export',
+    label: 'Export for doctor',
+    subtitle: 'Save a PDF or spreadsheet',
+    icon: 'document-text-outline',
+  },
+  {
+    href: '/settings',
+    label: 'Settings',
+    subtitle: 'Profile, targets, reminders and backup',
+    icon: 'settings-outline',
+  },
 ];
 
 export default function More() {
@@ -24,49 +45,20 @@ export default function More() {
       <ScreenTitle>More</ScreenTitle>
 
       {MENU_ITEMS.map((item) => (
-        <Pressable key={item.href} style={styles.row} onPress={() => router.push(item.href)}>
-          <View style={styles.icon}>
-            <Ionicons name={item.icon} size={24} color={colors.primary} />
-          </View>
-          <Text style={styles.rowLabel}>{item.label}</Text>
-          <Text style={styles.chevron}>›</Text>
-        </Pressable>
+        <ListRow
+          key={item.href}
+          title={item.label}
+          subtitle={item.subtitle}
+          icon={item.icon}
+          onPress={() => router.push(item.href)}
+        />
       ))}
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = {
   content: {
     paddingHorizontal: spacing.lg,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: touchTarget.minHeight,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    ...cardShadow,
-  },
-  icon: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primarySoft,
-    marginRight: spacing.md,
-  },
-  rowLabel: {
-    flex: 1,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  chevron: {
-    fontSize: fontSize.lg,
-    color: colors.textMuted,
-  },
-});
+} as const;

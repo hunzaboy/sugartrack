@@ -1,30 +1,33 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ChoicePicker } from '../components/ChoicePicker';
 import { Button } from '../components/Button';
+import { Screen } from '../components/Screen';
+import { AppText } from '../components/Typography';
+import { useSnackbar } from '../components/Snackbar';
 import { listReadingsInRange, listReadings } from '../lib/readings';
 import { getProfile } from '../lib/db';
-import {
-  prepareReadingsCsv,
-  prepareReadingsPdf,
-  savePreparedExport,
-  sharePreparedExport,
-} from '../lib/export';
-import type { PreparedExport } from '../lib/export';
-import { cardShadow, colors, fontFamily, fontSize, radius, spacing } from '../lib/theme';
+import { prepareReadingsCsv, prepareReadingsPdf } from '../lib/export';
+import { useExportDelivery } from '../lib/useExportDelivery';
+import { useAccessibility } from '../lib/accessibility';
+import { cardShadow, iconSize, radius, spacing } from '../lib/theme';
 
 type RangeOption = '7' | '30' | '90' | 'all';
 
 const RANGE_CHOICES: { value: RangeOption; label: string }[] = [
-  { value: '7', label: 'Last 7 Days' },
-  { value: '30', label: 'Last 30 Days' },
-  { value: '90', label: 'Last 90 Days' },
-  { value: 'all', label: 'All Time' },
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+  { value: 'all', label: 'All time' },
 ];
 
 export default function ExportScreen() {
+  const { colors } = useAccessibility();
+  const snackbar = useSnackbar();
+  const { deliver } = useExportDelivery();
   const [range, setRange] = useState<RangeOption>('30');
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'pdf' | 'csv' | null>(null);
 
   const getReadingsForRange = async () => {
     if (range === 'all') return listReadings();
@@ -34,104 +37,86 @@ export default function ExportScreen() {
     return listReadingsInRange(start.toISOString(), new Date().toISOString());
   };
 
-  const offerShare = (preparedExport: PreparedExport) => {
-    Alert.alert('Saved to your device', `${preparedExport.filename} was saved to the folder you selected.`, [
-      { text: 'Done', style: 'cancel' },
-      {
-        text: 'Share now',
-        onPress: async () => {
-          const isAvailable = await sharePreparedExport(preparedExport);
-          if (!isAvailable) {
-            Alert.alert('Sharing unavailable', 'This device cannot open the sharing menu.');
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleExportPdf = async () => {
-    setBusy(true);
+  const run = async (kind: 'pdf' | 'csv') => {
+    setBusy(kind);
     try {
       const readings = await getReadingsForRange();
       if (readings.length === 0) {
-        Alert.alert('No Data', 'There are no readings in this date range to export.');
+        snackbar.show('There are no readings in this date range.', { kind: 'error' });
         return;
       }
-      const profile = await getProfile();
-      const preparedExport = await prepareReadingsPdf(readings, profile);
-      const savedUri = await savePreparedExport(preparedExport);
-      if (savedUri) offerShare(preparedExport);
+      const prepared =
+        kind === 'pdf'
+          ? await prepareReadingsPdf(readings, await getProfile())
+          : prepareReadingsCsv(readings);
+      await deliver(prepared, kind === 'pdf' ? 'PDF report' : 'Spreadsheet');
     } catch (error) {
-      Alert.alert('Export failed', error instanceof Error ? error.message : 'Could not save the PDF. Please try again.');
+      snackbar.show(
+        error instanceof Error ? error.message : 'Could not save the file. Please try again.',
+        { kind: 'error' }
+      );
     } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleExportCsv = async () => {
-    setBusy(true);
-    try {
-      const readings = await getReadingsForRange();
-      if (readings.length === 0) {
-        Alert.alert('No Data', 'There are no readings in this date range to export.');
-        return;
-      }
-      const preparedExport = prepareReadingsCsv(readings);
-      const savedUri = await savePreparedExport(preparedExport);
-      if (savedUri) offerShare(preparedExport);
-    } catch (error) {
-      Alert.alert('Export failed', error instanceof Error ? error.message : 'Could not save the CSV. Please try again.');
-    } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.introCard}>
-        <Text style={styles.title}>A report you control</Text>
-        <Text style={styles.subtitle}>
+    <Screen scroll header style={styles.content}>
+      <View style={[styles.introCard, { backgroundColor: colors.primarySoft }]}>
+        <Ionicons name="lock-closed-outline" size={iconSize.lg} color={colors.primaryDark} />
+        <AppText variant="title" bold style={[styles.title, { color: colors.primaryDark }]}>
+          A report you control
+        </AppText>
+        <AppText variant="body" tone="muted">
           Choose a folder on your phone. Nothing is uploaded by SugarTrack.
-        </Text>
+        </AppText>
       </View>
 
-      <View style={styles.optionsCard}>
+      <View style={[styles.optionsCard, { backgroundColor: colors.surface }]}>
         <ChoicePicker label="Date range" choices={RANGE_CHOICES} value={range} onChange={setRange} />
 
-        <Button title={busy ? 'Preparing…' : 'Save PDF'} onPress={handleExportPdf} disabled={busy} />
-        <View style={{ height: spacing.md }} />
-        <Button title="Save CSV" variant="secondary" onPress={handleExportCsv} disabled={busy} />
+        <Button
+          title="Save PDF report"
+          icon="document-text-outline"
+          onPress={() => run('pdf')}
+          loading={busy === 'pdf'}
+          disabled={busy !== null}
+          hint="Best for showing or emailing to your doctor"
+        />
+        <View style={styles.gap} />
+        <Button
+          title="Save spreadsheet"
+          variant="secondary"
+          icon="grid-outline"
+          onPress={() => run('csv')}
+          loading={busy === 'csv'}
+          disabled={busy !== null}
+          hint="A CSV file you can open in Excel or Sheets"
+        />
       </View>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.lg,
+  content: {
+    paddingHorizontal: spacing.lg,
   },
   introCard: {
-    backgroundColor: colors.primarySoft,
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.lg,
   },
   title: {
-    color: colors.primaryDark,
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.lg,
+    marginTop: spacing.xs,
     marginBottom: spacing.xs,
   },
-  subtitle: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-  },
   optionsCard: {
-    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.md,
     ...cardShadow,
+  },
+  gap: {
+    height: spacing.md,
   },
 });

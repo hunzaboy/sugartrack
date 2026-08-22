@@ -1,20 +1,33 @@
 import { useCallback, useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, Alert } from 'react-native';
+import { Alert } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { Field } from '../components/Field';
-import { Button } from '../components/Button';
+import { LogScreen } from '../components/LogScreen';
+import { useSnackbar } from '../components/Snackbar';
 import { listA1c, addA1c, deleteA1c } from '../lib/a1c';
-import { colors, fontSize, spacing, radius } from '../lib/theme';
+import { warningFeedback } from '../lib/haptics';
+import { formatDayLabel } from '../lib/datetime';
 import type { A1cEntry } from '../lib/types';
 
+/** A1C is a percentage; anything outside this is a typo, not a result. */
+const A1C_MIN = 3;
+const A1C_MAX = 20;
+
 export default function A1cScreen() {
+  const snackbar = useSnackbar();
   const [entries, setEntries] = useState<A1cEntry[]>([]);
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    listA1c().then(setEntries);
-  }, []);
+  const load = useCallback(
+    () =>
+      listA1c()
+        .then(setEntries)
+        .finally(() => setLoaded(true)),
+    []
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -23,62 +36,81 @@ export default function A1cScreen() {
   );
 
   const handleAdd = async () => {
-    const numeric = parseFloat(value);
-    if (Number.isNaN(numeric) || numeric <= 0) {
-      Alert.alert('Invalid value', 'Please enter a valid A1C percentage.');
+    const numeric = parseFloat(value.replace(',', '.'));
+    if (!value.trim()) {
+      setError('Enter the A1C percentage from your lab result.');
+      warningFeedback();
       return;
     }
+    if (Number.isNaN(numeric) || numeric < A1C_MIN || numeric > A1C_MAX) {
+      setError(`An A1C result is normally between ${A1C_MIN}% and ${A1C_MAX}%.`);
+      warningFeedback();
+      return;
+    }
+    setError(null);
     setSaving(true);
     try {
       await addA1c(numeric, new Date().toISOString());
       setValue('');
-      load();
+      await load();
+      snackbar.show('A1C result saved.', { kind: 'success' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = (id: number) => {
-    Alert.alert('Delete Entry', 'Remove this A1C entry?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteA1c(id); load(); } },
+  const handleDelete = (item: A1cEntry) => {
+    Alert.alert('Delete this result?', `${item.value}% will be removed from your log.`, [
+      { text: 'Keep it', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteA1c(item.id);
+          await load();
+          snackbar.show('Result deleted.', {
+            kind: 'success',
+            action: {
+              label: 'Undo',
+              onPress: async () => {
+                await addA1c(item.value, item.date);
+                await load();
+              },
+            },
+          });
+        },
+      },
     ]);
   };
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.form}>
-        <Field label="A1C (%)" value={value} onChangeText={setValue} keyboardType="decimal-pad" placeholder="e.g. 6.8" />
-        <Button title={saving ? 'Saving...' : 'Log A1C Result'} onPress={handleAdd} disabled={saving} />
-      </View>
-
-      <FlatList
-        data={entries}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<Text style={styles.empty}>No A1C results logged yet.</Text>}
-        renderItem={({ item }) => (
-          <Pressable style={styles.row} onLongPress={() => handleDelete(item.id)}>
-            <Text style={styles.rowTitle}>{item.value}%</Text>
-            <Text style={styles.rowMeta}>{new Date(item.date).toLocaleDateString()}</Text>
-          </Pressable>
-        )}
+    <LogScreen
+      addLabel="Log A1C result"
+      onAdd={handleAdd}
+      saving={saving}
+      items={entries}
+      loaded={loaded}
+      keyOf={(item) => String(item.id)}
+      titleOf={(item) => `${item.value}%`}
+      subtitleOf={(item) => formatDayLabel(item.date)}
+      onDelete={handleDelete}
+      emptyIcon="water-outline"
+      emptyTitle="No A1C results yet"
+      emptyText="Add results from your lab tests to track them over time."
+    >
+      <Field
+        label="A1C result"
+        value={value}
+        onChangeText={(next) => {
+          setValue(next);
+          if (error) setError(null);
+        }}
+        keyboardType="decimal-pad"
+        placeholder="e.g. 6.8"
+        suffix="%"
+        error={error}
+        maxLength={5}
       />
-    </View>
+    </LogScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  form: { padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
-  listContent: { padding: spacing.lg },
-  empty: { fontSize: fontSize.md, color: colors.textMuted, textAlign: 'center', marginTop: spacing.xl },
-  row: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  rowTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.text },
-  rowMeta: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: 2 },
-});

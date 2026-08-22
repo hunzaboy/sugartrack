@@ -1,23 +1,36 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Switch, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { Field } from '../components/Field';
 import { ChoicePicker } from '../components/ChoicePicker';
 import { Button } from '../components/Button';
-import { SectionTitle } from '../components/Typography';
+import { DateTimeField } from '../components/DateTimeField';
+import { Screen } from '../components/Screen';
+import { SwitchRow } from '../components/SettingsRow';
+import { AppText, Caption, SectionTitle } from '../components/Typography';
+import { useSnackbar } from '../components/Snackbar';
 import { getProfile, updateProfile } from '../lib/db';
 import { prepareBackup, importBackup } from '../lib/backup';
-import { savePreparedExport, sharePreparedExport } from '../lib/export';
-import type { PreparedExport } from '../lib/export';
-import { requestNotificationPermission, scheduleDailyReminder, cancelDailyReminder } from '../lib/notifications';
+import { useExportDelivery } from '../lib/useExportDelivery';
+import {
+  requestNotificationPermission,
+  scheduleDailyReminder,
+  cancelDailyReminder,
+} from '../lib/notifications';
 import { useAccessibility } from '../lib/accessibility';
-import { colors, fontSize, spacing, radius } from '../lib/theme';
+import { formatDayLabel, formatStorageTime, fromStorageTime, toStorageTime } from '../lib/datetime';
+import { cardShadow, iconSize, radius, spacing } from '../lib/theme';
 import type { Profile, GlucoseUnit } from '../lib/types';
 
 const DAYS_UNTIL_BACKUP_REMINDER = 30;
 
 export default function SettingsScreen() {
+  const { largeText, setLargeText, colors } = useAccessibility();
+  const snackbar = useSnackbar();
+  const { deliver } = useExportDelivery();
+
   const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState('');
   const [targetLow, setTargetLow] = useState('');
@@ -29,10 +42,11 @@ export default function SettingsScreen() {
   const [backupBusy, setBackupBusy] = useState(false);
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderTime, setReminderTime] = useState('08:00');
-  const { largeText, setLargeText } = useAccessibility();
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [rangeError, setRangeError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    getProfile().then((p) => {
+    return getProfile().then((p) => {
       if (!p) return;
       setProfile(p);
       setName(p.name ?? '');
@@ -60,14 +74,18 @@ export default function SettingsScreen() {
   const handleSaveProfile = async () => {
     const low = parseFloat(targetLow);
     const high = parseFloat(targetHigh);
-    if (!name.trim()) {
-      Alert.alert('Name required', 'Please enter a name.');
+    const missingName = !name.trim();
+    const badRange = Number.isNaN(low) || Number.isNaN(high) || low <= 0 || high <= low;
+
+    setNameError(missingName ? 'Enter a name for your log.' : null);
+    setRangeError(badRange ? 'The high target must be greater than the low target.' : null);
+    if (missingName || badRange) {
+      // Inline errors sit well above the Save button; announce them too so the
+      // press never looks like it did nothing.
+      snackbar.show(missingName ? 'Enter a name to continue.' : 'Check the highlighted fields above.', { kind: 'error' });
       return;
     }
-    if (Number.isNaN(low) || Number.isNaN(high) || low <= 0 || high <= low) {
-      Alert.alert('Invalid target range', 'Please enter a valid low and high target range.');
-      return;
-    }
+
     setSavingProfile(true);
     try {
       await updateProfile({
@@ -78,8 +96,8 @@ export default function SettingsScreen() {
         doctor_name: doctorName.trim() || null,
         doctor_contact: doctorContact.trim() || null,
       });
-      load();
-      Alert.alert('Saved', 'Your profile has been updated.');
+      await load();
+      snackbar.show('Profile saved.', { kind: 'success' });
     } finally {
       setSavingProfile(false);
     }
@@ -89,10 +107,9 @@ export default function SettingsScreen() {
     if (value) {
       const granted = await requestNotificationPermission();
       if (!granted) {
-        Alert.alert(
-          'Notifications Disabled',
-          'Please allow notifications for SugarTrack in your device settings to use reminders.'
-        );
+        snackbar.show('Allow notifications for SugarTrack in your phone settings to use reminders.', {
+          kind: 'error',
+        });
         return;
       }
       await scheduleDailyReminder(reminderTime);
@@ -103,14 +120,12 @@ export default function SettingsScreen() {
     await updateProfile({ reminder_enabled: value ? 1 : 0 });
   };
 
-  const handleReminderTimeChange = async (time: string) => {
+  /** Receives an ISO string from the native time picker; we store "HH:MM". */
+  const handleReminderTimeChange = async (iso: string) => {
+    const time = toStorageTime(new Date(iso));
     setReminderTime(time);
-    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
-      await updateProfile({ reminder_time: time });
-      if (reminderEnabled) {
-        await scheduleDailyReminder(time);
-      }
-    }
+    await updateProfile({ reminder_time: time });
+    if (reminderEnabled) await scheduleDailyReminder(time);
   };
 
   const handleToggleLargeText = async (value: boolean) => {
@@ -118,57 +133,48 @@ export default function SettingsScreen() {
     await updateProfile({ large_text: value ? 1 : 0 });
   };
 
-  const offerShare = (preparedExport: PreparedExport) => {
-    Alert.alert('Saved to your device', `${preparedExport.filename} was saved to the folder you selected.`, [
-      { text: 'Done', style: 'cancel' },
-      {
-        text: 'Share now',
-        onPress: async () => {
-          const isAvailable = await sharePreparedExport(preparedExport);
-          if (!isAvailable) {
-            Alert.alert('Sharing unavailable', 'This device cannot open the sharing menu.');
-          }
-        },
-      },
-    ]);
-  };
-
   const handleExportBackup = async () => {
     setBackupBusy(true);
     try {
-      const preparedExport = await prepareBackup();
-      const savedUri = await savePreparedExport(preparedExport);
-      if (!savedUri) return;
+      const prepared = await prepareBackup();
+      const saved = await deliver(prepared, 'Backup');
+      if (!saved) return;
       await updateProfile({ last_backup_at: new Date().toISOString() });
-      load();
-      offerShare(preparedExport);
+      await load();
     } catch {
-      Alert.alert('Backup Failed', 'Could not save a backup. Please try again.');
+      snackbar.show('Could not save a backup. Please try again.', { kind: 'error' });
     } finally {
       setBackupBusy(false);
     }
   };
 
   const handleImportBackup = async () => {
-    const result = await DocumentPicker.getDocumentAsync({ type: 'application/zip', copyToCacheDirectory: true });
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'application/zip',
+      copyToCacheDirectory: true,
+    });
     if (result.canceled || !result.assets[0]) return;
 
+    // Destructive and irreversible — this is what Alert is still for.
     Alert.alert(
-      'Restore Backup',
-      'This will replace all current readings, photos, and settings with the contents of this backup. This cannot be undone. Continue?',
+      'Replace all your data?',
+      'This replaces every reading, photo and setting with the contents of this backup. It cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Restore',
+          text: 'Replace',
           style: 'destructive',
           onPress: async () => {
             setBackupBusy(true);
             try {
               await importBackup(result.assets[0].uri);
-              load();
-              Alert.alert('Restore Complete', 'Your backup has been restored.');
+              await load();
+              snackbar.show('Backup restored.', { kind: 'success' });
             } catch (e) {
-              Alert.alert('Restore Failed', e instanceof Error ? e.message : 'Could not restore this backup file.');
+              snackbar.show(
+                e instanceof Error ? e.message : 'Could not restore this backup file.',
+                { kind: 'error' }
+              );
             } finally {
               setBackupBusy(false);
             }
@@ -180,132 +186,205 @@ export default function SettingsScreen() {
 
   if (!profile) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+      <View style={[styles.loading, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
+  const card = [styles.card, { backgroundColor: colors.surface }];
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <SectionTitle>Profile</SectionTitle>
-      <Field label="Name" value={name} onChangeText={setName} />
-      <ChoicePicker
-        label="Blood Sugar Unit"
-        choices={[
-          { value: 'mg/dL', label: 'mg/dL' },
-          { value: 'mmol/L', label: 'mmol/L' },
-        ]}
-        value={unit}
-        onChange={setUnit}
-      />
-      <View style={styles.rangeRow}>
-        <View style={{ flex: 1 }}>
-          <Field label="Target Low" value={targetLow} onChangeText={setTargetLow} keyboardType="number-pad" />
-        </View>
-        <View style={{ width: spacing.md }} />
-        <View style={{ flex: 1 }}>
-          <Field label="Target High" value={targetHigh} onChangeText={setTargetHigh} keyboardType="number-pad" />
-        </View>
-      </View>
-      <Field label="Doctor Name (optional)" value={doctorName} onChangeText={setDoctorName} />
-      <Field label="Doctor Contact (optional)" value={doctorContact} onChangeText={setDoctorContact} />
-      <Button title={savingProfile ? 'Saving...' : 'Save Profile'} onPress={handleSaveProfile} disabled={savingProfile} />
-
-      <SectionTitle style={{ marginTop: spacing.xl }}>Accessibility</SectionTitle>
-      <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Large Text & High Contrast</Text>
-        <Switch value={largeText} onValueChange={handleToggleLargeText} />
-      </View>
-
-      <SectionTitle style={{ marginTop: spacing.xl }}>Reminders</SectionTitle>
-      <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Daily Testing Reminder</Text>
-        <Switch value={reminderEnabled} onValueChange={handleToggleReminder} />
-      </View>
-      {reminderEnabled ? (
+    <Screen scroll header style={styles.content}>
+      <SectionTitle style={styles.firstTitle}>Profile</SectionTitle>
+      <View style={card}>
         <Field
-          label="Reminder Time (24-hour, e.g. 08:00)"
-          value={reminderTime}
-          onChangeText={handleReminderTimeChange}
-          placeholder="08:00"
+          label="Name"
+          value={name}
+          onChangeText={(next) => {
+            setName(next);
+            if (nameError) setNameError(null);
+          }}
+          error={nameError}
         />
-      ) : null}
-      <Text style={styles.helperText}>
-        Note: reminders may be delayed by your device's battery optimization settings. For best results,
-        exclude SugarTrack from battery restrictions.
-      </Text>
-
-      <SectionTitle style={{ marginTop: spacing.xl }}>Backup & Restore</SectionTitle>
-      {showBackupReminder ? (
-        <View style={styles.reminderBanner}>
-          <Text style={styles.reminderText}>
-            {daysSinceBackup === null
-              ? "You haven't made a backup yet. Back up your data in case you change phones."
-              : `It's been ${daysSinceBackup} days since your last backup. Consider backing up again.`}
-          </Text>
+        <ChoicePicker
+          label="Blood sugar unit"
+          choices={[
+            { value: 'mg/dL', label: 'mg/dL' },
+            { value: 'mmol/L', label: 'mmol/L' },
+          ]}
+          value={unit}
+          onChange={setUnit}
+        />
+        <View style={styles.rangeRow}>
+          <View style={styles.rangeCell}>
+            <Field
+              label="Target low"
+              value={targetLow}
+              onChangeText={(next) => {
+                setTargetLow(next);
+                if (rangeError) setRangeError(null);
+              }}
+              keyboardType="number-pad"
+            />
+          </View>
+          <View style={styles.rangeCell}>
+            <Field
+              label="Target high"
+              value={targetHigh}
+              onChangeText={(next) => {
+                setTargetHigh(next);
+                if (rangeError) setRangeError(null);
+              }}
+              keyboardType="number-pad"
+            />
+          </View>
         </View>
-      ) : (
-        <Text style={styles.lastBackupText}>
-          Last backup: {profile.last_backup_at ? new Date(profile.last_backup_at).toLocaleString() : 'never'}
-        </Text>
-      )}
-      <Text style={styles.helperText}>
-        Choose a folder on your phone. Nothing is uploaded by SugarTrack. You can share the zip afterwards if you want.
-      </Text>
-      <Button
-        title={backupBusy ? 'Preparing…' : 'Save Backup'}
-        onPress={handleExportBackup}
-        disabled={backupBusy}
-      />
-      <View style={{ height: spacing.md }} />
-      <Button
-        title="Restore from Backup"
-        variant="secondary"
-        onPress={handleImportBackup}
-        disabled={backupBusy}
-      />
-    </ScrollView>
+        {rangeError ? (
+          <View style={styles.rangeError} accessibilityLiveRegion="polite">
+            <Ionicons name="alert-circle" size={iconSize.sm} color={colors.danger} />
+            <Caption tone="danger" style={styles.flex}>
+              {rangeError}
+            </Caption>
+          </View>
+        ) : null}
+        <Field label="Doctor name (optional)" value={doctorName} onChangeText={setDoctorName} />
+        <Field
+          label="Doctor contact (optional)"
+          value={doctorContact}
+          onChangeText={setDoctorContact}
+        />
+        <Button title="Save profile" onPress={handleSaveProfile} loading={savingProfile} icon="checkmark" />
+      </View>
+
+      <SectionTitle>Accessibility</SectionTitle>
+      <View style={card}>
+        {/* One control, one job. This used to be labelled "Large Text & High
+            Contrast", conflating two separate things the user might want. */}
+        <SwitchRow
+          label="Bigger, bolder text"
+          description="Increases text size across the app and darkens colours for easier reading."
+          value={largeText}
+          onValueChange={handleToggleLargeText}
+        />
+        <Caption style={styles.helper}>
+          Your phone&apos;s own text size setting also applies. This adds to it.
+        </Caption>
+      </View>
+
+      <SectionTitle>Reminders</SectionTitle>
+      <View style={card}>
+        <SwitchRow
+          label="Daily testing reminder"
+          description={reminderEnabled ? `Every day at ${formatStorageTime(reminderTime)}` : undefined}
+          value={reminderEnabled}
+          onValueChange={handleToggleReminder}
+        />
+        {reminderEnabled ? (
+          <View style={styles.reminderTime}>
+            {/* Was a free-text field expecting 24-hour "08:00". */}
+            <DateTimeField
+              label="Reminder time"
+              mode="time"
+              value={fromStorageTime(reminderTime).toISOString()}
+              onChange={handleReminderTimeChange}
+            />
+          </View>
+        ) : null}
+        <Caption style={styles.helper}>
+          Reminders can be delayed by your phone&apos;s battery saver. For reliable reminders, exclude
+          SugarTrack from battery restrictions.
+        </Caption>
+      </View>
+
+      <SectionTitle>Backup and restore</SectionTitle>
+      <View style={card}>
+        {showBackupReminder ? (
+          <View style={[styles.banner, { backgroundColor: colors.lowBg }]}>
+            <Ionicons name="warning-outline" size={iconSize.md} color={colors.low} />
+            <AppText variant="body" bold style={[styles.flex, { color: colors.low }]}>
+              {daysSinceBackup === null
+                ? "You haven't made a backup yet. Back up now in case you change phones."
+                : `It has been ${daysSinceBackup} days since your last backup.`}
+            </AppText>
+          </View>
+        ) : (
+          <Caption style={styles.helper}>
+            Last backup: {formatDayLabel(profile.last_backup_at as string)}
+          </Caption>
+        )}
+        <Caption style={styles.helper}>
+          Choose a folder on your phone. Nothing is uploaded. You can share the file afterwards if you
+          want to.
+        </Caption>
+        <Button
+          title="Save backup"
+          onPress={handleExportBackup}
+          loading={backupBusy}
+          icon="save-outline"
+        />
+        <View style={styles.gap} />
+        <Button
+          title="Restore from backup"
+          variant="secondary"
+          onPress={handleImportBackup}
+          disabled={backupBusy}
+          icon="folder-open-outline"
+        />
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingTop: spacing.xl },
-  rangeRow: { flexDirection: 'row' },
-  reminderBanner: {
-    backgroundColor: colors.lowBg,
+  loading: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    paddingHorizontal: spacing.lg,
+  },
+  firstTitle: {
+    marginTop: 0,
+  },
+  card: {
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+    ...cardShadow,
+  },
+  rangeRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  rangeCell: {
+    flex: 1,
+  },
+  rangeError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  flex: {
+    flex: 1,
+  },
+  helper: {
+    marginBottom: spacing.md,
+  },
+  reminderTime: {
+    marginTop: spacing.md,
+  },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
   },
-  reminderText: {
-    color: colors.low,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-  },
-  lastBackupText: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    marginBottom: spacing.md,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 56,
-    marginBottom: spacing.sm,
-  },
-  switchLabel: {
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    color: colors.text,
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  helperText: {
-    fontSize: fontSize.sm - 2,
-    color: colors.textMuted,
-    marginBottom: spacing.md,
+  gap: {
+    height: spacing.md,
   },
 });

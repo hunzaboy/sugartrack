@@ -51,6 +51,11 @@ CREATE TABLE IF NOT EXISTS a1c_log (
   date TEXT NOT NULL
 );
 
+-- weight_log and bp_log have no read/write code and no UI: they are scaffolding
+-- for features that were never built. They are kept rather than dropped because
+-- they already exist in every installed copy, and removing them would mean a
+-- destructive migration with no user-visible benefit. Delete them together with
+-- WeightEntry/BpEntry in lib/types.ts if those features are ruled out for good.
 CREATE TABLE IF NOT EXISTS weight_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   value REAL NOT NULL,

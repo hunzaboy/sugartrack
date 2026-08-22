@@ -19,7 +19,7 @@
       "shortDescription": "Offline blood sugar logbook. Free. No account. Data stays on your phone.",
       "fullDescription": "SugarTrack is a simple Android logbook for blood sugar. Free. No account. No internet. Everything stays on the phone.\n\nLog a reading with the time, context (fasting, before or after a meal, bedtime, or random), an optional note, and an optional photo of the meal. See the latest value on the home screen against the target range you set. Browse history and a trend graph. Log medications and A1C results. Set a daily reminder. Export a PDF or CSV to take to a doctor visit.\n\nUnits can be mg/dL or mmol/L.\n\nSugarTrack is a logbook, not a glucose meter and not medical advice. Readings come from your own meter. Talk to a doctor about what the numbers mean.\n\nHealth numbers are personal. SugarTrack does not talk to a server, does not require a login, and does not send readings anywhere.",
       "appIcon": "play-store/icon-512.png",
-      "featureGraphic": "play-store/feature-graphic.jpg",
+      "featureGraphic": "play-store/feature-graphic.png",
       "phoneScreenshots": [
         "play-store/screenshots/01-log-readings.jpg",
         "play-store/screenshots/02-daily-trends.jpg",

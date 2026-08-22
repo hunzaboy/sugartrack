@@ -1,6 +1,9 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { fontSize, fontFamily, spacing, radius, touchTarget } from '../lib/theme';
+import { View, Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { AppText, Label } from './Typography';
+import { spacing, radius, touchTarget, borderWidth, iconSize } from '../lib/theme';
 import { useAccessibility } from '../lib/accessibility';
+import { tapFeedback } from '../lib/haptics';
 
 interface Choice<T extends string> {
   value: T;
@@ -14,35 +17,54 @@ interface ChoicePickerProps<T extends string> {
   onChange: (value: T) => void;
 }
 
-export function ChoicePicker<T extends string>({ label, choices, value, onChange }: ChoicePickerProps<T>) {
+export function ChoicePicker<T extends string>({
+  label,
+  choices,
+  value,
+  onChange,
+}: ChoicePickerProps<T>) {
   const { scale, colors } = useAccessibility();
+  const minHeight = touchTarget.minHeight * Math.max(scale, 1);
+
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, { fontSize: fontSize.sm * scale, color: colors.text }]}>{label}</Text>
-      <View style={styles.row}>
+      <Label style={styles.label}>{label}</Label>
+      <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel={label}>
         {choices.map((choice) => {
           const selected = choice.value === value;
           return (
             <Pressable
               key={choice.value}
-              onPress={() => onChange(choice.value)}
+              onPress={() => {
+                if (!selected) tapFeedback();
+                onChange(choice.value);
+              }}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              style={[
+              accessibilityLabel={choice.label}
+              android_ripple={{ color: selected ? colors.primaryRipple : colors.surfaceRipple }}
+              style={({ pressed }) => [
                 styles.chip,
-                { borderColor: colors.border, backgroundColor: colors.surface },
+                { minHeight, borderColor: colors.borderStrong, backgroundColor: colors.surface },
                 selected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                pressed && !selected && { backgroundColor: colors.primarySoft },
               ]}
             >
-              <Text
-                style={[
-                  styles.chipText,
-                  { fontSize: fontSize.sm * scale, color: colors.text },
-                  selected && { color: colors.primaryText },
-                ]}
+              {/* A check, not just a fill — selection is not carried by colour alone. */}
+              {selected ? (
+                <Ionicons
+                  name="checkmark"
+                  size={iconSize.sm * Math.max(scale, 1)}
+                  color={colors.primaryText}
+                />
+              ) : null}
+              <AppText
+                variant="body"
+                bold
+                style={{ color: selected ? colors.primaryText : colors.text }}
               >
                 {choice.label}
-              </Text>
+              </AppText>
             </Pressable>
           );
         })}
@@ -56,7 +78,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    fontFamily: fontFamily.bold,
     marginBottom: spacing.xs,
   },
   row: {
@@ -65,13 +86,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   chip: {
-    minHeight: touchTarget.minHeight,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
     justifyContent: 'center',
     borderRadius: radius.pill,
-    borderWidth: 1.5,
-  },
-  chipText: {
-    fontFamily: fontFamily.bold,
+    borderWidth: borderWidth.thin,
+    overflow: 'hidden',
   },
 });

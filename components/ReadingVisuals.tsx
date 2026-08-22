@@ -1,29 +1,25 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { AppText, Caption } from './Typography';
 import { useAccessibility } from '../lib/accessibility';
-import { colors as baseColors, cardShadow, fontFamily, fontSize, radius, spacing } from '../lib/theme';
+import { cardShadow, fontSize, radius, spacing, statusColor } from '../lib/theme';
 import { getReadingStatus, READING_CONTEXTS } from '../lib/types';
 import type { Reading, ReadingStatus } from '../lib/types';
+import { formatReadingTimestamp, formatTime } from '../lib/datetime';
 
 interface StatusChipProps {
   status: ReadingStatus;
 }
 
-const STATUS_LABELS: Record<ReadingStatus, string> = {
-  low: 'Low',
-  in_range: 'In range',
-  high: 'High',
-};
-
 export function StatusChip({ status }: StatusChipProps) {
-  const { colors } = useAccessibility();
-  const color = status === 'low' ? colors.low : status === 'high' ? colors.high : colors.inRange;
-  const backgroundColor =
-    status === 'low' ? colors.lowBg : status === 'high' ? colors.highBg : colors.inRangeBg;
+  const { colors, scale } = useAccessibility();
+  const { fg, bg, label } = statusColor(status, colors);
 
   return (
-    <View style={[styles.chip, { backgroundColor }]}>
-      <View style={[styles.chipDot, { backgroundColor: color }]} />
-      <Text style={[styles.chipText, { color }]}>{STATUS_LABELS[status]}</Text>
+    <View style={[styles.chip, { backgroundColor: bg }]}>
+      <View style={[styles.chipDot, { backgroundColor: fg, width: 10 * scale, height: 10 * scale }]} />
+      <AppText variant="caption" bold style={{ color: fg }}>
+        {label}
+      </AppText>
     </View>
   );
 }
@@ -35,6 +31,7 @@ interface TargetRangeBarProps {
 }
 
 export function TargetRangeBar({ value, targetLow, targetHigh }: TargetRangeBarProps) {
+  const { colors } = useAccessibility();
   const scaleMax = Math.max(targetHigh * 1.35, value * 1.1, 1);
   const lowWidth = Math.min((targetLow / scaleMax) * 100, 100);
   const inRangeWidth = Math.min(((targetHigh - targetLow) / scaleMax) * 100, 100 - lowWidth);
@@ -42,17 +39,25 @@ export function TargetRangeBar({ value, targetLow, targetHigh }: TargetRangeBarP
   const markerPosition = Math.max(1, Math.min((value / scaleMax) * 100, 99));
 
   return (
-    <View accessibilityLabel={`Target range ${targetLow} to ${targetHigh}. Current value ${value}.`}>
+    <View
+      accessible
+      accessibilityLabel={`Target range ${targetLow} to ${targetHigh}. Current value ${value}.`}
+    >
       <View style={styles.rangeBar}>
-        <View style={{ flex: lowWidth, backgroundColor: baseColors.low }} />
-        <View style={{ flex: inRangeWidth, backgroundColor: baseColors.inRange }} />
-        <View style={{ flex: highWidth, backgroundColor: baseColors.high }} />
-        <View style={[styles.rangeMarker, { left: `${markerPosition}%` }]} />
+        <View style={{ flex: lowWidth, backgroundColor: colors.low }} />
+        <View style={{ flex: inRangeWidth, backgroundColor: colors.inRange }} />
+        <View style={{ flex: highWidth, backgroundColor: colors.high }} />
+        <View
+          style={[
+            styles.rangeMarker,
+            { left: `${markerPosition}%`, backgroundColor: colors.text, borderColor: colors.surface },
+          ]}
+        />
       </View>
-      <View style={styles.rangeLabels}>
-        <Text style={styles.rangeLabel}>{targetLow}</Text>
-        <Text style={styles.rangeLabel}>Target range</Text>
-        <Text style={styles.rangeLabel}>{targetHigh}</Text>
+      <View style={styles.rangeLabels} importantForAccessibility="no-hide-descendants">
+        <Caption>{targetLow}</Caption>
+        <Caption>Target range</Caption>
+        <Caption>{targetHigh}</Caption>
       </View>
     </View>
   );
@@ -64,6 +69,8 @@ interface ReadingCardProps {
   targetHigh: number;
   showRange?: boolean;
   hero?: boolean;
+  /** Show only the time, for rows already grouped under a date heading. */
+  timeOnly?: boolean;
 }
 
 export function ReadingCard({
@@ -72,35 +79,52 @@ export function ReadingCard({
   targetHigh,
   showRange = false,
   hero = false,
+  timeOnly = false,
 }: ReadingCardProps) {
   const { scale, colors } = useAccessibility();
   const status = getReadingStatus(reading.value, targetLow, targetHigh);
-  const context = READING_CONTEXTS.find((item) => item.value === reading.context)?.label ?? reading.context;
+  const context =
+    READING_CONTEXTS.find((item) => item.value === reading.context)?.label ?? reading.context;
 
   return (
-    <View style={[styles.card, hero && styles.heroCard]}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: colors.surface },
+        hero && styles.heroCard,
+      ]}
+    >
       <View style={styles.cardTopRow}>
-        <Text style={[styles.timestamp, { color: colors.textMuted, fontSize: (fontSize.sm - 2) * scale }]}>
-          {new Date(reading.timestamp).toLocaleString()}
-        </Text>
+        <Caption style={styles.timestamp}>
+          {timeOnly ? formatTime(reading.timestamp) : formatReadingTimestamp(reading.timestamp)}
+        </Caption>
         <StatusChip status={status} />
       </View>
       <View style={styles.valueRow}>
-        <Text style={[styles.value, hero && styles.heroValue, { color: colors.text }]}>
+        {/* The single most important number in the app — it scales like everything else now. */}
+        <AppText
+          bold
+          variant={hero ? 'hero' : 'display'}
+          style={{ lineHeight: (hero ? fontSize.hero : fontSize.display) * 1.1 * scale }}
+        >
           {reading.value}
-        </Text>
-        <Text style={[styles.unit, { color: colors.textMuted }]}>{reading.unit}</Text>
+        </AppText>
+        <AppText variant="body" tone="muted">
+          {reading.unit}
+        </AppText>
       </View>
-      <Text style={[styles.context, { color: colors.textMuted }]}>{context}</Text>
+      <AppText variant="body" tone="muted">
+        {context}
+      </AppText>
       {showRange ? (
         <View style={styles.rangeContainer}>
           <TargetRangeBar value={reading.value} targetLow={targetLow} targetHigh={targetHigh} />
         </View>
       ) : null}
       {reading.note ? (
-        <Text numberOfLines={2} style={[styles.note, { color: colors.text }]}>
+        <AppText variant="body" numberOfLines={2} style={styles.note}>
           {reading.note}
-        </Text>
+        </AppText>
       ) : null}
     </View>
   );
@@ -113,19 +137,13 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 7,
+    paddingVertical: spacing.xs,
   },
   chipDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  chipText: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.sm - 3,
+    borderRadius: radius.pill,
   },
   rangeBar: {
-    height: 10,
+    height: 12,
     borderRadius: radius.pill,
     overflow: 'hidden',
     flexDirection: 'row',
@@ -134,24 +152,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     width: 4,
-    height: 18,
+    height: 20,
     marginLeft: -2,
     borderRadius: 2,
-    backgroundColor: baseColors.text,
     borderWidth: 1,
-    borderColor: baseColors.surface,
   },
   rangeLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: spacing.xs,
   },
-  rangeLabel: {
-    color: baseColors.textMuted,
-    fontSize: fontSize.sm - 5,
-  },
   card: {
-    backgroundColor: baseColors.surface,
     borderRadius: radius.lg,
     padding: spacing.md,
     ...cardShadow,
@@ -174,25 +185,10 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.sm,
   },
-  value: {
-    fontFamily: fontFamily.bold,
-    fontSize: fontSize.xl,
-  },
-  heroValue: {
-    fontSize: fontSize.xxl + 8,
-  },
-  unit: {
-    fontSize: fontSize.sm,
-  },
-  context: {
-    fontSize: fontSize.sm,
-    marginTop: 2,
-  },
   rangeContainer: {
     marginTop: spacing.md,
   },
   note: {
-    fontSize: fontSize.sm,
     marginTop: spacing.sm,
   },
 });
